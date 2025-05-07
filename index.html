@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Financial Analytics Suite</title>
+    <title>ProTrade Financial Analytics Platform</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
@@ -168,6 +168,27 @@
             position: relative;
         }
 
+        .content-with-right-panel {
+            margin-right: 300px;
+        }
+
+        .right-panel {
+            position: fixed;
+            top: var(--header-height);
+            right: 0;
+            width: 300px;
+            height: calc(100vh - var(--header-height));
+            background-color: var(--white);
+            border-left: 1px solid var(--light-gray);
+            overflow-y: auto;
+            z-index: 90;
+        }
+
+        .dark-theme .right-panel {
+            background-color: var(--dark-gray);
+            border-left: 1px solid var(--primary-dark);
+        }
+
         /* Sidebar Navigation */
         .nav-section {
             margin-bottom: 8px;
@@ -294,6 +315,56 @@
             font-size: 13px;
         }
 
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--light-gray);
+            margin-bottom: 20px;
+        }
+
+        .dark-theme .tabs {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            color: var(--medium-gray);
+            font-weight: 500;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .tab:hover {
+            color: var(--dark-gray);
+        }
+
+        .dark-theme .tab:hover {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .tab.active {
+            color: var(--accent);
+        }
+
+        .tab.active::after {
+            content: "";
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
         /* Dashboard */
         .dashboard {
             display: grid;
@@ -406,13 +477,17 @@
 
         /* Chart specific cards */
         .chart-card {
-            grid-column: span 6;
+            grid-column: span 12;
             display: flex;
             flex-direction: column;
         }
 
+        .chart-card.half {
+            grid-column: span 6;
+        }
+
         @media (max-width: 1200px) {
-            .chart-card {
+            .chart-card.half {
                 grid-column: span 12;
             }
         }
@@ -420,7 +495,7 @@
         .chart-container {
             flex: 1;
             position: relative;
-            min-height: 300px;
+            min-height: 400px;
             padding: 16px;
         }
 
@@ -442,6 +517,7 @@
             padding: 8px 16px;
             background-color: rgba(0, 0, 0, 0.02);
             border-top: 1px solid var(--light-gray);
+            flex-wrap: wrap;
         }
 
         .dark-theme .chart-toolbar {
@@ -452,6 +528,8 @@
         .chart-toolbar-section {
             display: flex;
             gap: 8px;
+            margin: 4px 0;
+            flex-wrap: wrap;
         }
 
         /* Metrics Cards */
@@ -503,6 +581,7 @@
         .table-container {
             grid-column: span 12;
             overflow: auto;
+            max-height: 400px;
         }
 
         .data-table {
@@ -521,6 +600,9 @@
             color: var(--medium-gray);
             background-color: rgba(0, 0, 0, 0.02);
             border-bottom: 1px solid var(--light-gray);
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .dark-theme .data-table th {
@@ -959,119 +1041,6 @@
             background: var(--dark-gray);
         }
 
-        /* Drag handle for resizing */
-        .resize-handle {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            cursor: col-resize;
-            background-color: transparent;
-            transition: background-color 0.2s;
-        }
-
-        .resize-handle:hover {
-            background-color: rgba(52, 152, 219, 0.2);
-        }
-
-        .resize-handle-sidebar {
-            right: -2px;
-        }
-
-        .resize-handle-controls {
-            left: -2px;
-        }
-
-        /* Multi-select dropdown */
-        .multi-select {
-            position: relative;
-        }
-
-        .multi-select-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 12px;
-            border: 1px solid var(--light-gray);
-            border-radius: var(--border-radius);
-            background-color: var(--white);
-            cursor: pointer;
-        }
-
-        .dark-theme .multi-select-toggle {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .multi-select-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: var(--white);
-            border: 1px solid var(--light-gray);
-            border-radius: var(--border-radius);
-            margin-top: 4px;
-            z-index: 100;
-            display: none;
-        }
-
-        .dark-theme .multi-select-dropdown {
-            background-color: var(--dark-gray);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .multi-select.open .multi-select-dropdown {
-            display: block;
-        }
-
-        .multi-select-option {
-            padding: 8px 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-        }
-
-        .multi-select-option:hover {
-            background-color: rgba(52, 152, 219, 0.05);
-        }
-
-        .multi-select-option input {
-            margin-right: 8px;
-        }
-
-        /* Alert */
-        .alert {
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            margin-bottom: 16px;
-        }
-
-        .alert-info {
-            background-color: rgba(52, 152, 219, 0.1);
-            border-left: 4px solid var(--info);
-            color: var(--info);
-        }
-
-        .alert-warning {
-            background-color: rgba(243, 156, 18, 0.1);
-            border-left: 4px solid var(--warning);
-            color: var(--warning);
-        }
-
-        /* Timeframe selector with date picker */
-        .date-range-picker {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .date-input {
-            width: 130px;
-        }
-
         /* Notification */
         .notification {
             position: fixed;
@@ -1112,78 +1081,866 @@
             color: rgba(255, 255, 255, 0.7);
         }
 
-        .dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .dropdown-toggle {
+        /* Drawing tools panel */
+        .drawing-tools {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 10px;
         }
 
-        .dropdown-menu {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            min-width: 180px;
-            background-color: var(--white);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            z-index: 1000;
-            display: none;
+        .drawing-tool {
+            padding: 6px;
+            border-radius: 4px;
+            background-color: transparent;
             border: 1px solid var(--light-gray);
-        }
-
-        .dark-theme .dropdown-menu {
-            background-color: var(--dark-gray);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .dropdown.open .dropdown-menu {
-            display: block;
-        }
-
-        .dropdown-item {
-            padding: 8px 16px;
-            color: var(--dark-gray);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            cursor: pointer;
             transition: var(--transition);
         }
 
-        .dark-theme .dropdown-item {
-            color: rgba(255, 255, 255, 0.9);
+        .dark-theme .drawing-tool {
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .dropdown-item:hover {
-            background-color: rgba(52, 152, 219, 0.05);
+        .drawing-tool:hover {
+            background-color: rgba(0, 0, 0, 0.05);
         }
 
-        .dropdown-divider {
-            height: 1px;
-            background-color: var(--light-gray);
-            margin: 6px 0;
+        .dark-theme .drawing-tool:hover {
+            background-color: rgba(255, 255, 255, 0.05);
         }
 
-        .dark-theme .dropdown-divider {
+        .drawing-tool.active {
+            background-color: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        /* Patterns view */
+        .pattern-card {
+            border: 1px solid var(--light-gray);
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .dark-theme .pattern-card {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pattern-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: rgba(0, 0, 0, 0.02);
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .dark-theme .pattern-header {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pattern-title {
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .pattern-body {
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .pattern-chart {
+            width: 120px;
+            height: 80px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+        }
+
+        .dark-theme .pattern-chart {
             background-color: rgba(255, 255, 255, 0.1);
         }
 
-        .avatar {
-            width: 36px;
-            height: 36px;
+        .pattern-info {
+            flex: 1;
+        }
+
+        .pattern-description {
+            font-size: 13px;
+            color: var(--medium-gray);
+            margin-bottom: 8px;
+        }
+
+        .dark-theme .pattern-description {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .pattern-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+        }
+
+        .pattern-stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pattern-stat-value {
+            font-weight: 600;
+        }
+
+        .pattern-stat-label {
+            color: var(--medium-gray);
+        }
+
+        .dark-theme .pattern-stat-label {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Backtesting UI */
+        .backtest-builder {
+            margin-bottom: 20px;
+        }
+
+        .strategy-rules {
+            border: 1px solid var(--light-gray);
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+        }
+
+        .dark-theme .strategy-rules {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .rule-header {
+            padding: 12px 15px;
+            background-color: rgba(0, 0, 0, 0.02);
+            border-bottom: 1px solid var(--light-gray);
+            font-weight: 500;
+        }
+
+        .dark-theme .rule-header {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .rule-body {
+            padding: 15px;
+        }
+
+        .rule-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .rule-select {
+            flex: 1;
+        }
+
+        .add-rule-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background-color: transparent;
+            border: 1px dashed var(--light-gray);
+            border-radius: var(--border-radius);
+            color: var(--medium-gray);
+            cursor: pointer;
+            transition: var(--transition);
+            width: 100%;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .dark-theme .add-rule-btn {
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .add-rule-btn:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+            color: var(--dark-gray);
+        }
+
+        .dark-theme .add-rule-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Backtest results */
+        .backtest-results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .backtest-results {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .result-card {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 15px;
+        }
+
+        .dark-theme .result-card {
+            background-color: var(--dark-gray);
+        }
+
+        .result-value {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .result-label {
+            font-size: 13px;
+            color: var(--medium-gray);
+        }
+
+        .dark-theme .result-label {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Correlation Heatmap */
+        .heatmap-container {
+            overflow-x: auto;
+        }
+
+        .heatmap {
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .heatmap th, 
+        .heatmap td {
+            padding: 8px;
+            text-align: center;
+            min-width: 60px;
+        }
+
+        .heatmap td {
+            transition: var(--transition);
+        }
+
+        .heatmap td:hover {
+            transform: scale(1.1);
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark-theme .heatmap td:hover {
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Screener */
+        .screener-builder {
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            border: 1px solid var(--light-gray);
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+        }
+
+        .dark-theme .filter-group {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-header {
+            padding: 12px 15px;
+            background-color: rgba(0, 0, 0, 0.02);
+            border-bottom: 1px solid var(--light-gray);
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dark-theme .filter-header {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-body {
+            padding: 15px;
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .filter-category,
+        .filter-operator,
+        .filter-value {
+            flex: 1;
+        }
+
+        /* Options chain */
+        .options-chain {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            margin-bottom: 20px;
+        }
+
+        .options-header {
+            grid-column: span 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: rgba(0, 0, 0, 0.02);
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .dark-theme .options-header {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .options-column {
+            padding: 15px;
+        }
+
+        .options-column-title {
+            text-align: center;
+            font-weight: 500;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .dark-theme .options-column-title {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .option-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--light-gray);
+            font-size: 13px;
+        }
+
+        .dark-theme .option-row {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .option-strike {
+            font-weight: 500;
+        }
+
+        .option-price {
+            color: var(--accent);
+        }
+
+        .option-volume,
+        .option-oi {
+            color: var(--medium-gray);
+        }
+
+        .dark-theme .option-volume,
+        .dark-theme .option-oi {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* AI Insights */
+        .ai-insight {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 15px;
+        }
+
+        .dark-theme .ai-insight {
+            background-color: var(--dark-gray);
+        }
+
+        .ai-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background-color: var(--accent);
-            color: white;
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--accent);
+        }
+
+        .dark-theme .ai-icon {
+            background-color: rgba(52, 152, 219, 0.2);
+        }
+
+        .ai-content {
+            flex: 1;
+        }
+
+        .ai-title {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .ai-message {
+            font-size: 14px;
+            color: var(--medium-gray);
+            margin-bottom: 10px;
+        }
+
+        .dark-theme .ai-message {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .ai-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Multi-timeframe view */
+        .timeframe-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 992px) {
+            .timeframe-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .timeframe-chart {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+        }
+
+        .dark-theme .timeframe-chart {
+            background-color: var(--dark-gray);
+        }
+
+        .timeframe-header {
+            padding: 10px 15px;
+            background-color: rgba(0, 0, 0, 0.02);
+            border-bottom: 1px solid var(--light-gray);
+            font-weight: 500;
+        }
+
+        .dark-theme .timeframe-header {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .timeframe-body {
+            padding: 15px;
+            height: 200px;
+        }
+
+        /* Economic calendar */
+        .calendar-event {
+            display: flex;
+            gap: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .dark-theme .calendar-event {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .calendar-date {
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .calendar-day {
+            font-weight: 500;
+            font-size: 16px;
+        }
+
+        .calendar-time {
+            font-size: 12px;
+            color: var(--medium-gray);
+        }
+
+        .dark-theme .calendar-time {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .calendar-content {
+            flex: 1;
+        }
+
+        .calendar-title {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .calendar-description {
+            font-size: 13px;
+            color: var(--medium-gray);
+        }
+
+        .dark-theme .calendar-description {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .calendar-importance {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            background-color: var(--light-gray);
+        }
+
+        .calendar-importance.high {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--danger);
+        }
+
+        .calendar-importance.medium {
+            background-color: rgba(241, 196, 15, 0.1);
+            color: var(--warning);
+        }
+
+        .calendar-importance.low {
+            background-color: rgba(46, 204, 113, 0.1);
+            color: var(--success);
+        }
+
+        /* Volume profile */
+        .volume-profile {
+            position: relative;
+            height: 300px;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 15px;
+            display: flex;
+        }
+
+        .dark-theme .volume-profile {
+            background-color: var(--dark-gray);
+        }
+
+        .volume-bars {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .volume-bar {
+            display: flex;
+            align-items: center;
+            height: 20px;
+            margin-bottom: 5px;
+        }
+
+        .volume-label {
+            min-width: 60px;
+            font-size: 12px;
+            text-align: right;
+            padding-right: 10px;
+        }
+
+        .volume-line {
+            flex: 1;
+            height: 10px;
+            background-color: rgba(52, 152, 219, 0.2);
+            border-radius: 2px;
+        }
+
+        .volume-value {
+            min-width: 50px;
+            font-size: 12px;
+            padding-left: 10px;
+            color: var(--medium-gray);
+        }
+
+        .dark-theme .volume-value {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Social section */
+        .social-post {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .dark-theme .social-post {
+            background-color: var(--dark-gray);
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .post-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--light-gray);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 500;
+            color: var(--dark-gray);
+        }
+
+        .dark-theme .post-avatar {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .post-user {
+            flex: 1;
+        }
+
+        .post-name {
+            font-weight: 500;
+        }
+
+        .post-handle {
+            font-size: 12px;
+            color: var(--medium-gray);
+        }
+
+        .dark-theme .post-handle {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .post-content {
+            margin-bottom: 10px;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: var(--medium-gray);
+        }
+
+        .dark-theme .post-actions {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .post-action {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Image preview (for chart patterns) */
+        .image-preview {
+            max-width: 100%;
+            border-radius: var(--border-radius);
+            margin: 10px 0;
+            border: 1px solid var(--light-gray);
+        }
+
+        .dark-theme .image-preview {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Risk management calculator */
+        .risk-calculator {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .dark-theme .risk-calculator {
+            background-color: var(--dark-gray);
+        }
+
+        .risk-result {
+            background-color: rgba(0, 0, 0, 0.02);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .dark-theme .risk-result {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .risk-value {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .risk-label {
+            font-size: 12px;
+            color: var(--medium-gray);
+        }
+
+        .dark-theme .risk-label {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Toolbar styles */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 10px;
+            flex-wrap: wrap;
+        }
+
+        .dark-theme .toolbar {
+            background-color: var(--dark-gray);
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 5px;
+            border-right: 1px solid var(--light-gray);
+            padding-right: 10px;
+            margin-right: 5px;
+        }
+
+        .dark-theme .toolbar-group {
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+            padding-right: 0;
+            margin-right: 0;
+        }
+
+        .toolbar-btn {
+            padding: 6px;
+            border-radius: 4px;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .toolbar-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .dark-theme .toolbar-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .toolbar-btn.active {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        /* Overlay for dialog */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s linear 0.25s, opacity 0.25s;
+        }
+
+        .modal-overlay.show {
+            visibility: visible;
+            opacity: 1;
+            transition-delay: 0s;
+        }
+
+        .modal-content {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            width: 500px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .dark-theme .modal-content {
+            background-color: var(--dark-gray);
+        }
+
+        .modal-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--light-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dark-theme .modal-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-title {
+            font-weight: 500;
+            font-size: 18px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--medium-gray);
+        }
+
+        .modal-body {
+            padding: 15px;
+        }
+
+        .modal-footer {
+            padding: 15px;
+            border-top: 1px solid var(--light-gray);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .dark-theme .modal-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
@@ -1195,7 +1952,7 @@
                     <svg class="icon" viewBox="0 0 24 24">
                         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                     </svg>
-                    FinCharts Pro
+                    ProTrade Analytics
                 </a>
                 <button class="btn btn-icon btn-secondary" id="toggle-sidebar" data-tooltip="Toggle Sidebar">
                     <svg class="icon" viewBox="0 0 24 24">
@@ -1206,12 +1963,15 @@
                 </button>
             </div>
             <div class="header-actions">
+                <div class="search-box">
+                    <input type="text" placeholder="Search symbol" class="form-control" id="symbol-search">
+                </div>
                 <button class="btn btn-secondary btn-sm" id="toggle-controls">
                     <svg class="icon" viewBox="0 0 24 24">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
-                    Chart Settings
+                    Settings
                 </button>
                 <button class="btn btn-secondary btn-sm" id="toggle-theme">
                     <svg class="icon light-icon" viewBox="0 0 24 24">
@@ -1273,11 +2033,10 @@
 
         <div class="main-container">
             <aside class="sidebar" id="sidebar">
-                <div class="resize-handle resize-handle-sidebar" id="sidebar-resize-handle"></div>
                 <div class="nav-section">
                     <div class="nav-section-title">Main</div>
                     <ul class="nav-list">
-                        <li class="nav-item active">
+                        <li class="nav-item active" data-page="dashboard">
                             <span class="nav-item-icon">
                                 <svg class="icon" viewBox="0 0 24 24">
                                     <rect x="3" y="3" width="7" height="7"></rect>
@@ -1288,48 +2047,101 @@
                             </span>
                             <span class="nav-item-text">Dashboard</span>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item" data-page="advanced-charts">
                             <span class="nav-item-icon">
                                 <svg class="icon" viewBox="0 0 24 24">
                                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                                 </svg>
                             </span>
-                            <span class="nav-item-text">Charts</span>
+                            <span class="nav-item-text">Advanced Charts</span>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item" data-page="multi-timeframe">
                             <span class="nav-item-icon">
                                 <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                                    <line x1="3" y1="15" x2="21" y2="15"></line>
+                                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                                    <line x1="15" y1="3" x2="15" y2="21"></line>
                                 </svg>
                             </span>
-                            <span class="nav-item-text">News</span>
+                            <span class="nav-item-text">Multi-Timeframe</span>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item" data-page="pattern-recognition">
                             <span class="nav-item-icon">
                                 <svg class="icon" viewBox="0 0 24 24">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                                 </svg>
                             </span>
-                            <span class="nav-item-text">Calendar</span>
+                            <span class="nav-item-text">Pattern Recognition</span>
                         </li>
                     </ul>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-section-title">Analysis</div>
+                    <div class="nav-section-title">Technical Analysis</div>
                     <ul class="nav-list">
-                        <li class="nav-item">
+                        <li class="nav-item" data-page="indicators">
+                            <span class="nav-item-icon">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                            </span>
+                            <span class="nav-item-text">Technical Indicators</span>
+                        </li>
+                        <li class="nav-item" data-page="fibonacci">
+                            <span class="nav-item-icon">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                </svg>
+                            </span>
+                            <span class="nav-item-text">Fibonacci Tools</span>
+                        </li>
+                        <li class="nav-item" data-page="drawing-tools">
+                            <span class="nav-item-icon">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                                    <path d="M2 2l7.586 7.586"></path>
+                                    <circle cx="11" cy="11" r="2"></circle>
+                                </svg>
+                            </span>
+                            <span class="nav-item-text">Drawing Tools</span>
+                        </li>
+                        <li class="nav-item" data-page="volume-analysis">
+                            <span class="nav-item-icon">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <path d="M7 16V4M17 16V4M3 8h4m10 0h4M7 20h10M12 4v16"></path>
+                                </svg>
+                            </span>
+                            <span class="nav-item-text">Volume Analysis</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Trading Tools</div>
+                    <ul class="nav-list">
+                        <li class="nav-item" data-page="screener">
                             <span class="nav-item-icon">
                                 <svg class="icon" viewBox="0 0 24 24">
                                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                                 </svg>
                             </span>
-                            <span class="nav-item-text">Screener</span>
+                            <span class="nav-item-text">Stock Screener</span>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item" data-page="backtesting">
+                            <span class="nav-item-icon">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                                </svg>
+                            </span>
+                            <span class="nav-item-text">Backtesting</span>
+                        </li>
+                        <li class="nav-item" data-page="options">
                             <span class="nav-item-icon">
                                 <svg class="icon" viewBox="0 0 24 24">
                                     <line x1="4" y1="21" x2="4" y2="14"></line>
@@ -1343,222 +2155,649 @@
                                     <line x1="17" y1="16" x2="23" y2="16"></line>
                                 </svg>
                             </span>
-                            <span class="nav-item-text">Settings</span>
+                            <span class="nav-item-text">Options Analytics</span>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item" data-page="risk-management">
                             <span class="nav-item-icon">
                                 <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M3 3v18h18"></path>
-                                    <path d="M18 17l1 1h1a1 1 0 0 0 1-1v-1l-3 1z"></path>
-                                    <path d="M9 11l3 3 2-2 3 3"></path>
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                                 </svg>
                             </span>
-                            <span class="nav-item-text">Backtesting</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Portfolio</span>
+                            <span class="nav-item-text">Risk Management</span>
                         </li>
                     </ul>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-section-title">Watchlists</div>
+                    <div class="nav-section-title">Market Data</div>
                     <ul class="nav-list">
-                        <li class="nav-item">
+                        <li class="nav-item" data-page="correlation">
                             <span class="nav-item-icon">
                                 <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <rect x="7" y="7" width="3" height="9"></rect>
+                                    <rect x="14" y="7" width="3" height="5"></rect>
                                 </svg>
                             </span>
-                            <span class="nav-item-text">Tech Stocks</span>
+                            <span class="nav-item-text">Correlation Analysis</span>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item" data-page="economic-calendar">
                             <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Major Indices</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Crypto</span>
-                        </li>
-                    </ul>
-                </div>
-            </aside>
-
-            <main class="content">
-                <div class="dashboard">
-                    <div class="dashboard-header">
-                        <h1 class="dashboard-title">Financial Analytics</h1>
-                        <div class="dashboard-actions">
-                            <div class="timeframe-selector">
-                                <button class="timeframe-btn" data-timeframe="1D">1D</button>
-                                <button class="timeframe-btn" data-timeframe="1W">1W</button>
-                                <button class="timeframe-btn" data-timeframe="1M">1M</button>
-                                <button class="timeframe-btn active" data-timeframe="3M">3M</button>
-                                <button class="timeframe-btn" data-timeframe="6M">6M</button>
-                                <button class="timeframe-btn" data-timeframe="1Y">1Y</button>
-                                <button class="timeframe-btn" data-timeframe="5Y">5Y</button>
-                                <button class="timeframe-btn" data-timeframe="MAX">MAX</button>
-                            </div>
-                            <button class="btn btn-secondary btn-sm" id="custom-date-btn">
                                 <svg class="icon" viewBox="0 0 24 24">
                                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                                     <line x1="16" y1="2" x2="16" y2="6"></line>
                                     <line x1="8" y1="2" x2="8" y2="6"></line>
                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                 </svg>
-                                Custom
-                            </button>
-                            <button class="btn btn-primary btn-sm">
+                            </span>
+                            <span class="nav-item-text">Economic Calendar</span>
+                        </li>
+                        <li class="nav-item" data-page="market-breadth">
+                            <span class="nav-item-icon">
                                 <svg class="icon" viewBox="0 0 24 24">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="12" y1="8" x2="12" y2="16"></line>
-                                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                                    <path d="M3 5c0 1.66 4 3 9 3s9-1.34 9-3"></path>
+                                    <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path>
                                 </svg>
-                                Add Chart
-                            </button>
-                        </div>
-                    </div>
+                            </span>
+                            <span class="nav-item-text">Market Breadth</span>
+                        </li>
+                        <li class="nav-item" data-page="order-flow">
+                            <span class="nav-item-icon">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                </svg>
+                            </span>
+                            <span class="nav-item-text">Order Flow Analysis</span>
+                        </li>
+                    </ul>
+                </div>
 
-                    <!-- Metrics Row -->
-                    <div class="card metric-card">
-                        <div class="metric-title">Current Price</div>
-                        <div class="metric-value">$187.43</div>
-                        <div class="metric-change positive">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <polyline points="18 15 12 9 6 15"></polyline>
-                            </svg>
-                            +2.5% today
-                        </div>
-                    </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">AI & Social</div>
+                    <ul class="nav-list">
+                        <li class="nav-item" data-page="ai-insights">
+                            <span class="nav-item-icon">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </span>
+                            <span class="nav-item-text">AI Insights</span>
+                        </li>
+                        <li class="nav-item" data-page="sentiment">
+                            <span class="nav-item-icon">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                                </svg>
+                            </span>
+                            <span class="nav-item-text">Sentiment Analysis</span>
+                        </li>
+                        <li class="nav-item" data-page="social">
+                            <span class="nav-item-icon">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                            </span>
+                            <span class="nav-item-text">Social & Collaboration</span>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
 
-                    <div class="card metric-card">
-                        <div class="metric-title">YTD Return</div>
-                        <div class="metric-value">+24.7%</div>
-                        <div class="metric-change positive">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <polyline points="18 15 12 9 6 15"></polyline>
-                            </svg>
-                            +5.3% vs S&P 500
-                        </div>
-                    </div>
-
-                    <div class="card metric-card">
-                        <div class="metric-title">1Y Price Change</div>
-                        <div class="metric-value">+32.1%</div>
-                        <div class="metric-change positive">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <polyline points="18 15 12 9 6 15"></polyline>
-                            </svg>
-                            YoY comparison
-                        </div>
-                    </div>
-
-                    <div class="card metric-card">
-                        <div class="metric-title">Volatility (30D)</div>
-                        <div class="metric-value">17.8%</div>
-                        <div class="metric-change negative">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                            -2.3% MoM
-                        </div>
-                    </div>
-
-                    <!-- Primary Chart -->
-                    <div class="card chart-card">
-                        <div class="card-header">
-                            <h3 class="card-title">AAPL Price with YoY and MoM % Change</h3>
-                            <div class="card-actions">
-                                <button class="btn btn-icon btn-secondary" data-tooltip="Fullscreen">
+            <main class="content" id="main-content">
+                <!-- Dashboard Page -->
+                <div class="page active" id="dashboard-page">
+                    <div class="dashboard">
+                        <div class="dashboard-header">
+                            <h1 class="dashboard-title">AAPL - Apple Inc.</h1>
+                            <div class="dashboard-actions">
+                                <div class="timeframe-selector">
+                                    <button class="timeframe-btn" data-timeframe="1D">1D</button>
+                                    <button class="timeframe-btn" data-timeframe="1W">1W</button>
+                                    <button class="timeframe-btn" data-timeframe="1M">1M</button>
+                                    <button class="timeframe-btn active" data-timeframe="3M">3M</button>
+                                    <button class="timeframe-btn" data-timeframe="6M">6M</button>
+                                    <button class="timeframe-btn" data-timeframe="1Y">1Y</button>
+                                    <button class="timeframe-btn" data-timeframe="5Y">5Y</button>
+                                    <button class="timeframe-btn" data-timeframe="MAX">MAX</button>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" id="custom-date-btn">
                                     <svg class="icon" viewBox="0 0 24 24">
-                                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
                                     </svg>
+                                    Custom
                                 </button>
-                                <button class="btn btn-icon btn-secondary" data-tooltip="Export">
+                                <button class="btn btn-primary btn-sm">
                                     <svg class="icon" viewBox="0 0 24 24">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                        <polyline points="7 10 12 15 17 10"></polyline>
-                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                                        <line x1="8" y1="12" x2="16" y2="12"></line>
                                     </svg>
-                                </button>
-                                <button class="btn btn-icon btn-secondary" data-tooltip="More Options">
-                                    <svg class="icon" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="12" r="1"></circle>
-                                        <circle cx="12" cy="5" r="1"></circle>
-                                        <circle cx="12" cy="19" r="1"></circle>
-                                    </svg>
+                                    Add Chart
                                 </button>
                             </div>
                         </div>
-                        <div class="chart-container">
-                            <canvas id="priceChart"></canvas>
-                            <div class="loading-overlay" id="priceChartLoading">
-                                <div class="spinner"></div>
-                            </div>
-                        </div>
-                        <div class="chart-legend">
-                            <div class="legend-item">
-                                <div class="legend-color" style="background-color: var(--chart-primary);"></div>
-                                <span>Current Price</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color" style="background-color: var(--chart-secondary);"></div>
-                                <span>Previous Year</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color" style="background-color: var(--chart-tertiary);"></div>
-                                <span>YoY Change %</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color" style="background-color: var(--chart-quinary);"></div>
-                                <span>MoM Change %</span>
-                            </div>
-                        </div>
-                        <div class="chart-toolbar">
-                            <div class="chart-toolbar-section">
-                                <button class="btn btn-sm btn-secondary" id="toggle-sma">
-                                    SMA
-                                </button>
-                                <button class="btn btn-sm btn-secondary" id="toggle-ema">
-                                    EMA
-                                </button>
-                                <button class="btn btn-sm btn-secondary" id="toggle-bollinger">
-                                    Bollinger
-                                </button>
-                            </div>
-                            <div class="chart-toolbar-section">
-                                <button class="btn btn-sm btn-secondary" id="toggle-volume">
-                                    Volume
-                                </button>
-                                <button class="btn btn-sm btn-secondary" id="toggle-macd">
-                                    MACD
-                                </button>
-                                <button class="btn btn-sm btn-secondary" id="toggle-rsi">
-                                    RSI
-                                </button>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Secondary Chart -->
-                    <div class="card chart-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Technical Analysis with Indicators</h3>
-                            <div class="card-actions">
-                                <button class="btn btn-icon btn-secondary" data-tooltip="Fullscreen">
-                                    <svg class="icon" viewBox="0 0 24 24">
-                                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                        <!-- Metrics Row -->
+                        <div class="card metric-card">
+                            <div class="metric-title">Current Price</div>
+                            <div class="metric-value">$187.43</div>
+                            <div class="metric-change positive">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <polyline points="18 15 12 9 6 15"></polyline>
+                                </svg>
+                                +2.5% today
+                            </div>
+                        </div>
+
+                        <div class="card metric-card">
+                            <div class="metric-title">YTD Return</div>
+                            <div class="metric-value">+24.7%</div>
+                            <div class="metric-change positive">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <polyline points="18 15 12 9 6 15"></polyline>
+                                </svg>
+                                +5.3% vs S&P 500
+                            </div>
+                        </div>
+
+                        <div class="card metric-card">
+                            <div class="metric-title">52W High/Low</div>
+                            <div class="metric-value">$198.23 / $124.17</div>
+                            <div class="metric-change">
+                                5.8% below 52W high
+                            </div>
+                        </div>
+
+                        <div class="card metric-card">
+                            <div class="metric-title">Volatility (30D)</div>
+                            <div class="metric-value">17.8%</div>
+                            <div class="metric-change negative">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                                -2.3% MoM
+                            </div>
+                        </div>
+
+                        <!-- Main Chart with Advanced Tools -->
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h3 class="card-title">Advanced Chart with Technical Analysis</h3>
+                                <div class="card-actions">
+                                    <button class="btn btn-icon btn-secondary" data-tooltip="Fullscreen">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="btn btn-icon btn-secondary" data-tooltip="Share">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <circle cx="18" cy="5" r="3"></circle>
+                                            <circle cx="6" cy="12" r="3"></circle>
+                                            <circle cx="18" cy="19" r="3"></circle>
+                                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                        </svg>
+                                    </button>
+                                    <button class="btn btn-icon btn-secondary" data-tooltip="Export">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Drawing Tools Toolbar -->
+                            <div class="toolbar">
+                                <div class="toolbar-group">
+                                    <button class="toolbar-btn active" data-tooltip="Candlestick">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M7 5v14M17 5v14M7 10h4v4H7zM17 5h-4v4h4zM17 15h-4v4h4z"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Line">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="OHLC">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M5 8h4M5 12h2M5 16h5M19 8h-4M19 12h-2M19 16h-5"></path>
+                                            <path d="M7 4v16M17 4v16"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Area">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M22 12C22 12 19 18 16 18C13 18 13 12 10 12C7 12 6 18 3 18L3 21L22 21L22 12Z"></path>
+                                            <path d="M22 12C22 12 19 6 16 6C13 6 13 12 10 12C7 12 6 6 3 6L3 3L22 3L22 12Z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="toolbar-group">
+                                    <button class="toolbar-btn" data-tooltip="Trend Line">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <line x1="4" y1="19" x2="20" y2="5"></line>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Horizontal Line">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <line x1="4" y1="12" x2="20" y2="12"></line>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Channel">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <line x1="4" y1="7" x2="20" y2="7"></line>
+                                            <line x1="4" y1="17" x2="20" y2="17"></line>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Fibonacci">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <line x1="4" y1="19" x2="20" y2="5"></line>
+                                            <line x1="4" y1="14.5" x2="20" y2="14.5"></line>
+                                            <line x1="4" y1="12.5" x2="20" y2="12.5"></line>
+                                            <line x1="4" y1="10" x2="20" y2="10"></line>
+                                            <line x1="4" y1="7.5" x2="20" y2="7.5"></line>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Pitchfork">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M12 3L4 15h8l-1 6h2l1-6h8L12 3z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="toolbar-group">
+                                    <button class="toolbar-btn" data-tooltip="Rectangle">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <rect x="4" y="6" width="16" height="12"></rect>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Ellipse">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="8"></circle>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Triangle">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M12 3L4 18h16L12 3z"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Text">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <line x1="4" y1="6" x2="20" y2="6"></line>
+                                            <line x1="12" y1="6" x2="12" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="toolbar-group">
+                                    <button class="toolbar-btn" data-tooltip="Measure">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M2 11h20"></path>
+                                            <path d="M4 11v2"></path>
+                                            <path d="M8 11v2"></path>
+                                            <path d="M12 11v2"></path>
+                                            <path d="M16 11v2"></path>
+                                            <path d="M20 11v2"></path>
+                                            <path d="M2 7v10"></path>
+                                            <path d="M22 7v10"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Brush">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                                            <path d="M2 2l7.586 7.586"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="toolbar-btn" data-tooltip="Eraser">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M20 20H9l-7-7c-1.5-1.5-1.5-3.5 0-5l5-5c1.5-1.5 3.5-1.5 5 0l7 7c1.5 1.5 1.5 3.5 0 5l-5 5z"></path>
+                                            <line x1="9" y1="16" x2="14" y2="11"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <canvas id="mainChart"></canvas>
+                                <div class="loading-overlay" id="mainChartLoading">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-toolbar">
+                                <div class="chart-toolbar-section">
+                                    <button class="btn btn-sm btn-secondary" id="toggle-sma">SMA</button>
+                                    <button class="btn btn-sm btn-secondary" id="toggle-ema">EMA</button>
+                                    <button class="btn btn-sm btn-secondary" id="toggle-bollinger">Bollinger</button>
+                                    <button class="btn btn-sm btn-secondary" id="toggle-ichimoku">Ichimoku</button>
+                                </div>
+                                <div class="chart-toolbar-section">
+                                    <button class="btn btn-sm btn-secondary" id="toggle-volume">Volume</button>
+                                    <button class="btn btn-sm btn-secondary" id="toggle-macd">MACD</button>
+                                    <button class="btn btn-sm btn-secondary" id="toggle-rsi">RSI</button>
+                                    <button class="btn btn-sm btn-secondary" id="toggle-stoch">Stochastic</button>
+                                </div>
+                                <div class="chart-toolbar-section">
+                                    <button class="btn btn-sm btn-secondary" id="toggle-vwap">VWAP</button>
+                                    <button class="btn btn-sm btn-secondary" id="toggle-pivots">Pivots</button>
+                                    <button class="btn btn-sm btn-secondary" id="toggle-fibonacci">Fibonacci</button>
+                                    <button class="btn btn-sm btn-secondary" id="toggle-patterns">Patterns</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Volume Profile and Market Profile -->
+                        <div class="card chart-card half">
+                            <div class="card-header">
+                                <h3 class="card-title">Volume Profile Analysis</h3>
+                                <div class="card-actions">
+                                    <button class="btn btn-icon btn-secondary" data-tooltip="Fullscreen">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="btn btn-icon btn-secondary" data-tooltip="Settings">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="volumeProfileChart"></canvas>
+                                <div class="loading-overlay" id="volumeProfileLoading">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Order Flow Analysis -->
+                        <div class="card chart-card half">
+                            <div class="card-header">
+                                <h3 class="card-title">Order Flow Analysis</h3>
+                                <div class="card-actions">
+                                    <button class="btn btn-icon btn-secondary" data-tooltip="Fullscreen">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="btn btn-icon btn-secondary" data-tooltip="Settings">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="orderFlowChart"></canvas>
+                                <div class="loading-overlay" id="orderFlowLoading">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pattern Recognition Section -->
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h3 class="card-title">Chart Pattern Recognition</h3>
+                                <div class="card-actions">
+                                    <button class="btn btn-sm btn-secondary">Show All</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="pattern-card">
+                                    <div class="pattern-header">
+                                        <div class="pattern-title">Head and Shoulders</div>
+                                        <div class="pattern-badge">Bearish</div>
+                                    </div>
+                                    <div class="pattern-body">
+                                        <div class="pattern-chart">
+                                            <!-- Mini chart visualization goes here -->
+                                        </div>
+                                        <div class="pattern-info">
+                                            <div class="pattern-description">A bearish reversal pattern consisting of three peaks, with the middle peak (head) being the highest.</div>
+                                            <div class="pattern-stats">
+                                                <div class="pattern-stat">
+                                                    <div class="pattern-stat-value">78%</div>
+                                                    <div class="pattern-stat-label">Accuracy</div>
+                                                </div>
+                                                <div class="pattern-stat">
+                                                    <div class="pattern-stat-value">-6.2%</div>
+                                                    <div class="pattern-stat-label">Avg. Movement</div>
+                                                </div>
+                                                <div class="pattern-stat">
+                                                    <div class="pattern-stat-value">15d</div>
+                                                    <div class="pattern-stat-label">Avg. Duration</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="pattern-card">
+                                    <div class="pattern-header">
+                                        <div class="pattern-title">Cup and Handle</div>
+                                        <div class="pattern-badge">Bullish</div>
+                                    </div>
+                                    <div class="pattern-body">
+                                        <div class="pattern-chart">
+                                            <!-- Mini chart visualization goes here -->
+                                        </div>
+                                        <div class="pattern-info">
+                                            <div class="pattern-description">A bullish continuation pattern resembling a cup with a handle, signaling a pause in an uptrend.</div>
+                                            <div class="pattern-stats">
+                                                <div class="pattern-stat">
+                                                    <div class="pattern-stat-value">83%</div>
+                                                    <div class="pattern-stat-label">Accuracy</div>
+                                                </div>
+                                                <div class="pattern-stat">
+                                                    <div class="pattern-stat-value">+8.4%</div>
+                                                    <div class="pattern-stat-label">Avg. Movement</div>
+                                                </div>
+                                                <div class="pattern-stat">
+                                                    <div class="pattern-stat-value">22d</div>
+                                                    <div class="pattern-stat-label">Avg. Duration</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Options Chain Analysis -->
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h3 class="card-title">Options Chain Analysis</h3>
+                                <div class="card-actions">
+                                    <button class="btn btn-sm btn-secondary">Jun 21, 2025</button>
+                                    <button class="btn btn-icon btn-secondary" data-tooltip="Settings">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="options-chain">
+                                    <div class="options-header">
+                                        <div>IV: 24.5%</div>
+                                        <div>Current: $187.43</div>
+                                        <div>PCR: 0.85</div>
+                                    </div>
+                                    <div class="options-column">
+                                        <div class="options-column-title">Calls</div>
+                                        <div class="option-row">
+                                            <div class="option-price">$15.45</div>
+                                            <div class="option-strike">$175</div>
+                                            <div class="option-volume">1,243</div>
+                                            <div class="option-oi">4,568</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$12.30</div>
+                                            <div class="option-strike">$180</div>
+                                            <div class="option-volume">2,145</div>
+                                            <div class="option-oi">6,821</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$9.75</div>
+                                            <div class="option-strike">$185</div>
+                                            <div class="option-volume">3,542</div>
+                                            <div class="option-oi">8,764</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$7.20</div>
+                                            <div class="option-strike">$190</div>
+                                            <div class="option-volume">4,321</div>
+                                            <div class="option-oi">9,876</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$4.85</div>
+                                            <div class="option-strike">$195</div>
+                                            <div class="option-volume">2,987</div>
+                                            <div class="option-oi">7,531</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$2.90</div>
+                                            <div class="option-strike">$200</div>
+                                            <div class="option-volume">1,876</div>
+                                            <div class="option-oi">5,321</div>
+                                        </div>
+                                    </div>
+                                    <div class="options-column">
+                                        <div class="options-column-title">Puts</div>
+                                        <div class="option-row">
+                                            <div class="option-price">$2.75</div>
+                                            <div class="option-strike">$175</div>
+                                            <div class="option-volume">1,122</div>
+                                            <div class="option-oi">3,654</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$4.20</div>
+                                            <div class="option-strike">$180</div>
+                                            <div class="option-volume">1,832</div>
+                                            <div class="option-oi">5,427</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$6.15</div>
+                                            <div class="option-strike">$185</div>
+                                            <div class="option-volume">2,431</div>
+                                            <div class="option-oi">6,542</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$8.35</div>
+                                            <div class="option-strike">$190</div>
+                                            <div class="option-volume">3,654</div>
+                                            <div class="option-oi">8,321</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$11.20</div>
+                                            <div class="option-strike">$195</div>
+                                            <div class="option-volume">2,541</div>
+                                            <div class="option-oi">6,210</div>
+                                        </div>
+                                        <div class="option-row">
+                                            <div class="option-price">$14.75</div>
+                                            <div class="option-strike">$200</div>
+                                            <div class="option-volume">1,562</div>
+                                            <div class="option-oi">4,125</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Insights Section -->
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h3 class="card-title">AI Market Insights</h3>
+                                <div class="card-actions">
+                                    <button class="btn btn-sm btn-secondary">Refresh Insights</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="ai-insight">
+                                    <div class="ai-icon">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                    </div>
+                                    <div class="ai-content">
+                                        <div class="ai-title">Price Pattern Detected</div>
+                                        <div class="ai-message">Our AI has detected a bullish cup and handle pattern forming over the last 3 months with an 85% confidence rating. Historical data suggests a potential 8.4% upside movement over the next 22 trading days.</div>
+                                        <div class="ai-actions">
+                                            <button class="btn btn-sm btn-secondary">Show on Chart</button>
+                                            <button class="btn btn-sm btn-secondary">Analysis Details</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="ai-insight">
+                                    <div class="ai-icon">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ai-content">
+                                        <div class="ai-title">Sentiment Analysis</div>
+                                        <div class="ai-message">Social media sentiment has turned increasingly positive in the last 7 days, with a 23% increase in bullish mentions. Institutional analyst ratings show 18 buys, 7 holds, and 2 sells with an average price target of $210.</div>
+                                        <div class="ai-actions">
+                                            <button class="btn btn-sm btn-secondary">View Full Report</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="ai-insight">
+                                    <div class="ai-icon">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="ai-content">
+                                        <div class="ai-title">Upcoming Events</div>
+                                        <div class="ai-message">Earnings report scheduled for June 15, 2025. Historical volatility increases by an average of 12% in the week leading to earnings announcements. Options market implies a potential 5.2% move in either direction.</div>
+                                        <div class="ai-actions">
+                                            <button class="btn btn-sm btn-secondary">Add to Calendar</button>
+                                            <button class="btn btn-sm btn-secondary">View Historical Reactions</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Risk Management Section -->
+                        <div class="card chart-card half">
+                            <div class="card-header">
+                                <h3 class="card-title">Risk Management Calculator</h3>
+                                <div class="card-actions">
+                                    <button class="btn btn-icon btn-secondary" data-tooltip="Settings">
+                                        <svg class="icon" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label class="form-label">Account Size</label>
+                                    <input type="number" class="form-control" id="account-size" value="100000">
+                                </div>
+                                <div class="form-group">
