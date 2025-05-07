@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FRED API Data Fetcher</title>
+    <title>FRED API Data Viewer</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,13 +13,24 @@
         #data {
             margin-top: 20px;
         }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
         .error {
             color: red;
         }
     </style>
 </head>
 <body>
-    <h1>FRED API Data Fetcher</h1>
+    <h1>FRED API Data Viewer</h1>
     <form id="fetchForm">
         <label for="seriesId">Enter Series ID:</label>
         <input type="text" id="seriesId" placeholder="e.g., GDP">
@@ -29,7 +40,7 @@
     <div id="data"></div>
 
     <script>
-        const apiKey = '2f057499936072679d8843d7fce99989'; // Your provided FRED API key
+        const apiKey = '2f057499936072679d8843d7fce99989'; // Your FRED API key
         const form = document.getElementById('fetchForm');
         const dataDiv = document.getElementById('data');
 
@@ -64,31 +75,26 @@
 
         function renderData(observations) {
             const table = document.createElement('table');
-            table.border = 1;
-            table.style.marginTop = '10px';
-
             const headerRow = document.createElement('tr');
-            const dateHeader = document.createElement('th');
-            const valueHeader = document.createElement('th');
 
+            const dateHeader = document.createElement('th');
             dateHeader.textContent = 'Date';
+            const valueHeader = document.createElement('th');
             valueHeader.textContent = 'Value';
 
             headerRow.appendChild(dateHeader);
             headerRow.appendChild(valueHeader);
             table.appendChild(headerRow);
 
-            observations.forEach((obs) => {
+            observations.forEach(obs => {
                 const row = document.createElement('tr');
                 const dateCell = document.createElement('td');
-                const valueCell = document.createElement('td');
-
                 dateCell.textContent = obs.date;
-                valueCell.textContent = obs.value;
+                const valueCell = document.createElement('td');
+                valueCell.textContent = obs.value === '.' ? 'N/A' : obs.value;
 
                 row.appendChild(dateCell);
                 row.appendChild(valueCell);
-
                 table.appendChild(row);
             });
 
