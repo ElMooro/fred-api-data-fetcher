@@ -3,412 +3,319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finnhub Stock Data Fetcher</title>
+    <title>Chart.js Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        h1 {
-            color: #0066cc;
-            text-align: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
         }
         .container {
-            background-color: #f9f9f9;
-            border-radius: 8px;
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        .form-group {
+        header {
+            background-color: #4361ee;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .chart-box {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            padding: 20px;
+            width: calc(50% - 20px);
+        }
+        @media (max-width: 768px) {
+            .chart-box {
+                width: 100%;
+            }
+        }
+        .chart-title {
+            font-size: 1.2em;
+            margin-top: 0;
             margin-bottom: 15px;
+            color: #4361ee;
+            text-align: center;
         }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
         }
         button {
-            background-color: #0066cc;
+            background-color: #4361ee;
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 10px 20px;
+            margin: 0 5px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
+            transition: background-color 0.3s;
         }
         button:hover {
-            background-color: #0055aa;
+            background-color: #3a56d4;
         }
-        #result {
-            margin-top: 20px;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-        }
-        .data-card {
-            background-color: white;
-            border-radius: 4px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .data-card h3 {
-            margin-top: 0;
-            color: #0066cc;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        .positive {
-            color: #4caf50;
-        }
-        .negative {
-            color: #f44336;
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px 0;
+            color: #666;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
+    <header>
+        <div class="container">
+            <h1>Interactive Chart Dashboard</h1>
+        </div>
+    </header>
+
     <div class="container">
-        <h1>Finnhub Stock Data Fetcher</h1>
-        
-        <div class="form-group">
-            <label for="symbol">Stock Symbol:</label>
-            <input type="text" id="symbol" placeholder="e.g., AAPL, MSFT, GOOGL" value="AAPL">
+        <div class="controls">
+            <button id="randomizeData">Randomize Data</button>
+            <button id="addDataset">Add Dataset</button>
+            <button id="removeDataset">Remove Dataset</button>
         </div>
-        
-        <div class="form-group">
-            <label for="data-type">Data Type:</label>
-            <select id="data-type">
-                <option value="quote">Current Quote</option>
-                <option value="company">Company Profile</option>
-                <option value="news">Latest News</option>
-                <option value="earnings">Earnings</option>
-            </select>
+
+        <div class="chart-container">
+            <div class="chart-box">
+                <h2 class="chart-title">Monthly Revenue</h2>
+                <canvas id="barChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <h2 class="chart-title">User Growth</h2>
+                <canvas id="lineChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <h2 class="chart-title">Traffic Sources</h2>
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <h2 class="chart-title">Weekly Performance</h2>
+                <canvas id="radarChart"></canvas>
+            </div>
         </div>
-        
-        <button id="fetch-button">Fetch Data</button>
-        
-        <div id="result"></div>
     </div>
-    
+
+    <footer>
+        <div class="container">
+            <p>Created with Chart.js | Data for demonstration purposes only</p>
+        </div>
+    </footer>
+
     <script>
-        // Your Finnhub API key is already included
-        const apiKey = "afcbdce692af048c29dee367c1c53c631e64a395";
-        
-        document.getElementById('fetch-button').addEventListener('click', fetchData);
-        
-        async function fetchData() {
-            const symbol = document.getElementById('symbol').value.trim().toUpperCase();
-            const dataType = document.getElementById('data-type').value;
-            const resultDiv = document.getElementById('result');
-            
-            // Validation
-            if (!symbol) {
-                resultDiv.innerHTML = '<p class="error">Please enter a stock symbol</p>';
-                return;
-            }
-            
-            // Clear previous results
-            resultDiv.innerHTML = '<p>Loading data...</p>';
-            
-            try {
-                let endpoint;
-                let displayFunction;
-                
-                // Determine which endpoint to use based on selected data type
-                switch (dataType) {
-                    case 'quote':
-                        endpoint = `https://finnhub.io/api/v1/quote?symbol=${symbol}`;
-                        displayFunction = displayQuote;
-                        break;
-                    case 'company':
-                        endpoint = `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}`;
-                        displayFunction = displayCompanyProfile;
-                        break;
-                    case 'news':
-                        // Get news from last 7 days
-                        const today = new Date();
-                        const lastWeek = new Date(today);
-                        lastWeek.setDate(today.getDate() - 7);
-                        
-                        const toDate = formatDate(today);
-                        const fromDate = formatDate(lastWeek);
-                        
-                        endpoint = `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${fromDate}&to=${toDate}`;
-                        displayFunction = displayNews;
-                        break;
-                    case 'earnings':
-                        endpoint = `https://finnhub.io/api/v1/stock/earnings?symbol=${symbol}`;
-                        displayFunction = displayEarnings;
-                        break;
-                    default:
-                        throw new Error('Invalid data type selected');
-                }
-                
-                // Make API request
-                const response = await fetch(endpoint, {
-                    method: 'GET',
-                    headers: {
-                        'X-Finnhub-Token': apiKey
+        // Helper function to generate random data
+        function getRandomData(min, max, count) {
+            return Array.from({ length: count }, () => 
+                Math.floor(Math.random() * (max - min + 1)) + min
+            );
+        }
+
+        // Helper function to generate random colors
+        function getRandomColor() {
+            const r = Math.floor(Math.random() * 255);
+            const g = Math.floor(Math.random() * 255);
+            const b = Math.floor(Math.random() * 255);
+            return `rgba(${r}, ${g}, ${b}, 0.7)`;
+        }
+
+        // Labels for all charts
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+
+        // BAR CHART - Monthly Revenue
+        const barCtx = document.getElementById('barChart').getContext('2d');
+        const barChart = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: '2024 Revenue ($K)',
+                    data: getRandomData(30, 100, 6),
+                    backgroundColor: 'rgba(67, 97, 238, 0.7)',
+                    borderColor: 'rgba(67, 97, 238, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
                     }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
-                
-                const data = await response.json();
-                
-                // Display the result using the appropriate display function
-                displayFunction(data, symbol);
-                
-            } catch (error) {
-                console.error('Error:', error);
-                resultDiv.innerHTML = `
-                    <p class="error">Error: ${error.message}</p>
-                    <p>This could be due to:</p>
-                    <ul>
-                        <li>Invalid stock symbol</li>
-                        <li>API rate limit exceeded</li>
-                        <li>Network issues</li>
-                    </ul>
-                `;
             }
-        }
-        
-        // Helper function to format date as YYYY-MM-DD for API requests
-        function formatDate(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-        
-        // Display functions for different data types
-        
-        function displayQuote(data, symbol) {
-            const resultDiv = document.getElementById('result');
-            
-            if (!data || Object.keys(data).length === 0) {
-                resultDiv.innerHTML = `<p class="error">No quote data found for ${symbol}</p>`;
-                return;
+        });
+
+        // LINE CHART - User Growth
+        const lineCtx = document.getElementById('lineChart').getContext('2d');
+        const lineChart = new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'New Users',
+                    data: getRandomData(500, 3000, 6),
+                    fill: false,
+                    borderColor: 'rgba(76, 201, 240, 1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
             }
-            
-            const priceChange = data.d;
-            const priceChangePercent = data.dp;
-            const changeClass = priceChange >= 0 ? 'positive' : 'negative';
-            const changeSign = priceChange >= 0 ? '+' : '';
-            
-            resultDiv.innerHTML = `
-                <div class="data-card">
-                    <h3>${symbol} - Current Quote</h3>
-                    <table>
-                        <tr>
-                            <th>Current Price</th>
-                            <td>$${data.c.toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <th>Change</th>
-                            <td class="${changeClass}">
-                                ${changeSign}${priceChange.toFixed(2)} (${changeSign}${priceChangePercent.toFixed(2)}%)
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>Today's High</th>
-                            <td>$${data.h.toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <th>Today's Low</th>
-                            <td>$${data.l.toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <th>Previous Close</th>
-                            <td>$${data.pc.toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <th>Today's Open</th>
-                            <td>$${data.o.toFixed(2)}</td>
-                        </tr>
-                    </table>
-                    <p style="margin-top: 15px; color: #666;">Last updated: ${new Date().toLocaleString()}</p>
-                </div>
-            `;
-        }
-        
-        function displayCompanyProfile(data, symbol) {
-            const resultDiv = document.getElementById('result');
-            
-            if (!data || Object.keys(data).length === 0) {
-                resultDiv.innerHTML = `<p class="error">No company profile found for ${symbol}</p>`;
-                return;
+        });
+
+        // PIE CHART - Traffic Sources
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        const pieChart = new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Organic Search', 'Direct', 'Social Media', 'Referral', 'Email'],
+                datasets: [{
+                    data: getRandomData(10, 40, 5),
+                    backgroundColor: [
+                        'rgba(67, 97, 238, 0.7)',
+                        'rgba(76, 201, 240, 0.7)',
+                        'rgba(87, 204, 153, 0.7)',
+                        'rgba(255, 107, 107, 0.7)',
+                        'rgba(255, 209, 102, 0.7)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
             }
-            
-            // Format market cap (convert from millions to full number)
-            const marketCap = data.marketCapitalization 
-                ? formatLargeNumber(data.marketCapitalization * 1000000) 
-                : 'N/A';
-            
-            resultDiv.innerHTML = `
-                <div class="data-card">
-                    <h3>Company Profile: ${data.name || symbol}</h3>
-                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                        ${data.logo ? `<img src="${data.logo}" alt="${data.name} logo" style="width: 60px; height: 60px; margin-right: 15px;">` : ''}
-                        <div>
-                            <h4 style="margin: 0;">${data.name || 'N/A'} (${data.ticker || symbol})</h4>
-                            <p style="margin: 5px 0 0 0;">${data.exchange || 'N/A'} - ${data.currency || 'N/A'}</p>
-                        </div>
-                    </div>
-                    
-                    <table>
-                        <tr>
-                            <th>Industry</th>
-                            <td>${data.finnhubIndustry || 'N/A'}</td>
-                        </tr>
-                        <tr>
-                            <th>Country</th>
-                            <td>${data.country || 'N/A'}</td>
-                        </tr>
-                        <tr>
-                            <th>Market Cap</th>
-                            <td>${marketCap}</td>
-                        </tr>
-                        <tr>
-                            <th>IPO Date</th>
-                            <td>${data.ipo || 'N/A'}</td>
-                        </tr>
-                        <tr>
-                            <th>Website</th>
-                            <td>${data.weburl ? `<a href="${data.weburl}" target="_blank">${data.weburl}</a>` : 'N/A'}</td>
-                        </tr>
-                    </table>
-                    
-                    <div style="margin-top: 15px;">
-                        <h4>Contact Information</h4>
-                        <p><strong>Phone:</strong> ${data.phone || 'N/A'}</p>
-                        <p><strong>Address:</strong> ${data.address || 'N/A'}</p>
-                        <p><strong>City:</strong> ${data.city || 'N/A'}</p>
-                    </div>
-                </div>
-            `;
-        }
-        
-        function displayNews(data, symbol) {
-            const resultDiv = document.getElementById('result');
-            
-            if (!data || data.length === 0) {
-                resultDiv.innerHTML = `<p class="error">No recent news found for ${symbol}</p>`;
-                return;
+        });
+
+        // RADAR CHART - Weekly Performance
+        const radarCtx = document.getElementById('radarChart').getContext('2d');
+        const radarChart = new Chart(radarCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Speed', 'Reliability', 'User Satisfaction', 'Features', 'Support', 'Security'],
+                datasets: [{
+                    label: 'Current Week',
+                    data: getRandomData(60, 100, 6),
+                    fill: true,
+                    backgroundColor: 'rgba(67, 97, 238, 0.2)',
+                    borderColor: 'rgba(67, 97, 238, 1)',
+                    pointBackgroundColor: 'rgba(67, 97, 238, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(67, 97, 238, 1)'
+                }]
+            },
+            options: {
+                elements: {
+                    line: {
+                        borderWidth: 2
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
             }
-            
-            // Display only the 5 most recent news items
-            const recentNews = data.slice(0, 5);
-            
-            let newsHtml = `<div class="data-card"><h3>Recent News for ${symbol}</h3>`;
-            
-            recentNews.forEach(item => {
-                const date = new Date(item.datetime * 1000).toLocaleDateString();
-                
-                newsHtml += `
-                    <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
-                        <h4><a href="${item.url}" target="_blank">${item.headline || 'No headline'}</a></h4>
-                        <p style="margin: 5px 0; color: #666;">${date} - ${item.source || 'Unknown source'}</p>
-                        <p>${item.summary || 'No summary available'}</p>
-                    </div>
-                `;
+        });
+
+        // Button event listeners for interactivity
+        document.getElementById('randomizeData').addEventListener('click', () => {
+            // Update each chart with new random data
+            barChart.data.datasets.forEach(dataset => {
+                dataset.data = getRandomData(30, 100, 6);
             });
-            
-            newsHtml += `</div>`;
-            resultDiv.innerHTML = newsHtml;
-        }
-        
-        function displayEarnings(data, symbol) {
-            const resultDiv = document.getElementById('result');
-            
-            if (!data || data.length === 0) {
-                resultDiv.innerHTML = `<p class="error">No earnings data found for ${symbol}</p>`;
-                return;
-            }
-            
-            // Show the last 4 quarters
-            const recentEarnings = data.slice(0, 4);
-            
-            let earningsHtml = `<div class="data-card"><h3>Recent Earnings for ${symbol}</h3>`;
-            
-            earningsHtml += `
-                <table>
-                    <tr>
-                        <th>Quarter</th>
-                        <th>Date</th>
-                        <th>EPS Actual</th>
-                        <th>EPS Estimate</th>
-                        <th>Surprise</th>
-                    </tr>
-            `;
-            
-            recentEarnings.forEach(quarter => {
-                const surprise = quarter.actual - quarter.estimate;
-                const surpriseClass = surprise >= 0 ? 'positive' : 'negative';
-                const surpriseSign = surprise >= 0 ? '+' : '';
-                
-                earningsHtml += `
-                    <tr>
-                        <td>${quarter.period}</td>
-                        <td>${quarter.date || 'N/A'}</td>
-                        <td>$${quarter.actual !== null ? quarter.actual.toFixed(2) : 'N/A'}</td>
-                        <td>$${quarter.estimate !== null ? quarter.estimate.toFixed(2) : 'N/A'}</td>
-                        <td class="${surpriseClass}">
-                            ${quarter.actual !== null && quarter.estimate !== null ? 
-                                `${surpriseSign}$${surprise.toFixed(2)}` : 'N/A'
-                            }
-                        </td>
-                    </tr>
-                `;
+            barChart.update();
+
+            lineChart.data.datasets.forEach(dataset => {
+                dataset.data = getRandomData(500, 3000, 6);
             });
+            lineChart.update();
+
+            pieChart.data.datasets.forEach(dataset => {
+                dataset.data = getRandomData(10, 40, 5);
+            });
+            pieChart.update();
+
+            radarChart.data.datasets.forEach(dataset => {
+                dataset.data = getRandomData(60, 100, 6);
+            });
+            radarChart.update();
+        });
+
+        document.getElementById('addDataset').addEventListener('click', () => {
+            // Add a new dataset to the bar and line charts
+            const newColor = getRandomColor();
             
-            earningsHtml += `</table></div>`;
-            resultDiv.innerHTML = earningsHtml;
-        }
-        
-        // Helper function to format large numbers with suffixes (K, M, B, T)
-        function formatLargeNumber(num) {
-            if (num === null || num === undefined || isNaN(num)) {
-                return 'N/A';
+            // Add to bar chart
+            barChart.data.datasets.push({
+                label: `Dataset ${barChart.data.datasets.length + 1}`,
+                data: getRandomData(30, 100, 6),
+                backgroundColor: newColor,
+                borderColor: newColor,
+                borderWidth: 1
+            });
+            barChart.update();
+
+            // Add to line chart
+            const lineColor = getRandomColor();
+            lineChart.data.datasets.push({
+                label: `Dataset ${lineChart.data.datasets.length + 1}`,
+                data: getRandomData(500, 3000, 6),
+                fill: false,
+                borderColor: lineColor,
+                tension: 0.1
+            });
+            lineChart.update();
+        });
+
+        document.getElementById('removeDataset').addEventListener('click', () => {
+            // Remove the last dataset from bar and line charts
+            if (barChart.data.datasets.length > 1) {
+                barChart.data.datasets.pop();
+                barChart.update();
             }
-            
-            if (num >= 1000000000000) {
-                return '$' + (num / 1000000000000).toFixed(2) + 'T';
+
+            if (lineChart.data.datasets.length > 1) {
+                lineChart.data.datasets.pop();
+                lineChart.update();
             }
-            if (num >= 1000000000) {
-                return '$' + (num / 1000000000).toFixed(2) + 'B';
-            }
-            if (num >= 1000000) {
-                return '$' + (num / 1000000).toFixed(2) + 'M';
-            }
-            if (num >= 1000) {
-                return '$' + (num / 1000).toFixed(2) + 'K';
-            }
-            return '$' + num.toFixed(2);
-        }
+        });
     </script>
 </body>
 </html>
