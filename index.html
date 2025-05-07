@@ -1,483 +1,248 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ReferenceLine, ReferenceArea, Label
 } from 'recharts';
 import * as math from 'mathjs';
-import _ from 'lodash';
+// import _ from 'lodash'; // Removed: Unused import
 
-// Financial Crisis Events for Reference
+// Financial Crisis Events
 const FINANCIAL_CRISES = [
   { name: "Black Monday", date: "1987-10-19", description: "Stock market crash where Dow Jones fell by 22.6%" },
   { name: "Dot-com Bubble", startDate: "2000-03-10", endDate: "2002-10-09", description: "Tech stock bubble burst" },
   { name: "Global Financial Crisis", startDate: "2007-12-01", endDate: "2009-06-01", description: "Subprime mortgage crisis" },
   { name: "Flash Crash", date: "2010-05-06", description: "Brief stock market crash with trillion-dollar losses" },
   { name: "European Debt Crisis", startDate: "2010-04-01", endDate: "2012-07-26", description: "Sovereign debt crisis in Europe" },
-  { name: "COVID-19 Crash", date: "2020-03-16", description: "Pandemic-induced market crash" },
+  { name: "COVID-19 Crash", date: "2020-03-16", description: "Pandemic-induced market crash" }
 ];
 
-// List of available indicators from various sources
+// Data sources
 const DATA_SOURCES = {
   FRED: [
     { id: "GDP", name: "Gross Domestic Product", frequency: "quarterly" },
     { id: "UNRATE", name: "Unemployment Rate", frequency: "monthly" },
-    { id: "FEDFUNDS", name: "Federal Funds Rate", frequency: "monthly" },
-    { id: "CPIAUCSL", name: "Consumer Price Index", frequency: "monthly" },
-    { id: "INDPRO", name: "Industrial Production", frequency: "monthly" },
-    { id: "M2", name: "M2 Money Stock", frequency: "monthly" },
-    { id: "DGS10", name: "10-Year Treasury Yield", frequency: "daily" },
+    { id: "FEDFUNDS", name: "Federal Funds Rate", frequency: "monthly" }
   ],
   ECB: [
     { id: "EXR.D.USD.EUR.SP00.A", name: "USD/EUR Exchange Rate", frequency: "daily" },
-    { id: "MFI.M.U2.Y.V.M30.X.I.U2.2300.Z01.A", name: "Eurozone M3 Money Supply", frequency: "monthly" },
-    { id: "FM.D.U2.EUR.4F.KR.MRR_FR.LEV", name: "ECB Main Refinancing Rate", frequency: "daily" },
+    { id: "MFI.M.U2.Y.V.M30.X.I.U2.2300.Z01.A", name: "Eurozone M3 Money Supply", frequency: "monthly" }
   ],
   NYFED: [
-    { id: "SOFR", name: "Secured Overnight Financing Rate", frequency: "daily" },
-    { id: "EFFR", name: "Effective Federal Funds Rate", frequency: "daily" },
+    { id: "SOFR", name: "Secured Overnight Financing Rate", frequency: "daily" }
   ],
   OFR: [
-    { id: "FSI", name: "Financial Stress Index", frequency: "daily" },
-    { id: "VOFF", name: "Volatility Index", frequency: "daily" },
+    { id: "FSI", name: "Financial Stress Index", frequency: "daily" }
   ]
 };
 
-// Math transformations available
+// Transformations
 const TRANSFORMATIONS = [
   { id: "raw", name: "Raw Data (No Transformation)" },
   { id: "mom", name: "Month-over-Month Change" },
   { id: "mom_pct", name: "Month-over-Month % Change" },
   { id: "qoq", name: "Quarter-over-Quarter Change" },
   { id: "qoq_pct", name: "Quarter-over-Quarter % Change" },
-  { id: "yoy", name: "Year-over-Year % Change" },
-  { id: "ma3", name: "3-Period Moving Average" },
-  { id: "ma12", name: "12-Period Moving Average" },
-  { id: "stddev12", name: "12-Period Standard Deviation" },
+  { id: "yoy", name: "Year-over-Year % Change" } // Commonly Year-over-Year % Change
 ];
 
-// Time frames available
+// Time frames
 const TIME_FRAMES = [
   { id: "daily", name: "Daily" },
   { id: "weekly", name: "Weekly" },
   { id: "monthly", name: "Monthly" },
   { id: "quarterly", name: "Quarterly" },
   { id: "semiannual", name: "Half-Yearly" },
-  { id: "annual", name: "Yearly" },
+  { id: "annual", name: "Yearly" }
 ];
 
-// Mock data to simulate API responses
+// Mock data generator
 const generateMockData = (seriesId, frequency, startDate, endDate) => {
   const data = [];
   let currentDate = new Date(startDate);
   const end = new Date(endDate);
-  
-  // Base values and volatility for different series
-  const baseValues = {
-    "GDP": 21000, "UNRATE": 5.2, "FEDFUNDS": 2.0, "CPIAUCSL": 260,
-    "INDPRO": 105, "M2": 19500, "DGS10": 3.5, "SOFR": 2.2,
-    "FSI": 0.5, "VOFF": 15, "EFFR": 2.1
-  };
-  
-  const baseValue = baseValues[seriesId] || 100;
-  const volatility = seriesId === "VOFF" ? 0.15 : 0.02;
-  
-  // Increment based on frequency
-  const getNextDate = (date, freq) => {
-    const newDate = new Date(date);
-    switch(freq) {
-      case 'daily': newDate.setDate(date.getDate() + 1); break;
-      case 'weekly': newDate.setDate(date.getDate() + 7); break;
-      case 'monthly': newDate.setMonth(date.getMonth() + 1); break;
-      case 'quarterly': newDate.setMonth(date.getMonth() + 3); break;
-      case 'semiannual': newDate.setMonth(date.getMonth() + 6); break;
-      case 'annual': newDate.setFullYear(date.getFullYear() + 1); break;
-      default: newDate.setDate(date.getDate() + 1);
-    }
-    return newDate;
-  };
-  
-  // Generate trend with randomness
-  let value = baseValue;
+
+  let value = 100; // Base value
+
   while (currentDate <= end) {
-    // Add crisis-specific shocks
-    let shock = 0;
-    if (seriesId !== "GDP" && seriesId !== "INDPRO") {
-      if (dateMatches(currentDate, "2008-09-15", "2008-09-30")) {
-        shock = baseValue * 0.15; // Lehman Brothers shock
-      } else if (dateMatches(currentDate, "2020-03-01", "2020-04-15")) {
-        shock = baseValue * 0.20; // COVID shock
-      }
-    } else {
-      if (dateMatches(currentDate, "2008-09-15", "2009-03-30")) {
-        shock = -baseValue * 0.06; // GDP/Industrial production drop during crisis
-      } else if (dateMatches(currentDate, "2020-03-01", "2020-06-15")) {
-        shock = -baseValue * 0.08; // COVID economic impact
-      }
-    }
-    
-    // Add random variation
-    const randomFactor = 1 + (Math.random() * 2 - 1) * volatility;
-    value = value * randomFactor + shock;
-    
-    // Ensure values stay reasonable
-    if (seriesId === "UNRATE" && value < 3) value = 3;
-    if (seriesId === "UNRATE" && value > 15) value = 15;
-    if ((seriesId === "FEDFUNDS" || seriesId === "DGS10") && value < 0) value = 0.1;
-    
+    value = value * (1 + (Math.random() * 0.06 - 0.03)); // Add some randomness
+
     data.push({
       date: currentDate.toISOString().split('T')[0],
       value: parseFloat(value.toFixed(2))
     });
-    
-    currentDate = getNextDate(currentDate, frequency);
+
+    // Move to next period
+    if (frequency === 'daily') {
+      currentDate.setDate(currentDate.getDate() + 1);
+    } else if (frequency === 'weekly') {
+      currentDate.setDate(currentDate.getDate() + 7);
+    } else if (frequency === 'monthly') {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    } else if (frequency === 'quarterly') {
+      currentDate.setMonth(currentDate.getMonth() + 3);
+    } else if (frequency === 'semiannual') {
+      currentDate.setMonth(currentDate.getMonth() + 6);
+    } else if (frequency === 'annual') {
+      currentDate.setFullYear(currentDate.getFullYear() + 1);
+    } else { // Default to monthly if frequency is unknown, or handle error
+        currentDate.setMonth(currentDate.getMonth() + 1);
+    }
   }
-  
   return data;
 };
 
-const dateMatches = (date, startStr, endStr) => {
-  const current = date.getTime();
-  const start = new Date(startStr).getTime();
-  const end = new Date(endStr).getTime();
-  return current >= start && current <= end;
-};
-
-// Function to apply data transformations
-const applyTransformation = (data, transformation) => {
-  if (!data || data.length === 0) return [];
-  
-  const transformedData = [...data];
-  
-  switch (transformation) {
-    case 'mom':
-      // Month-over-month absolute change
-      for (let i = 1; i < transformedData.length; i++) {
-        transformedData[i] = {
-          ...transformedData[i],
-          value: transformedData[i].value - transformedData[i-1].value
-        };
-      }
-      transformedData.shift(); // Remove first element as it has no previous month
-      break;
-      
-    case 'mom_pct':
-      // Month-over-month percentage change
-      for (let i = 1; i < transformedData.length; i++) {
-        const prevValue = transformedData[i-1].value;
-        transformedData[i] = {
-          ...transformedData[i],
-          value: prevValue !== 0 ? ((transformedData[i].value - prevValue) / prevValue) * 100 : 0
-        };
-      }
-      transformedData.shift();
-      break;
-      
-    case 'qoq':
-      // Quarter-over-quarter change (assumes data is already in chronological order)
-      if (transformedData.length < 4) return transformedData;
-      const qoqData = [];
-      for (let i = 3; i < transformedData.length; i++) {
-        qoqData.push({
-          ...transformedData[i],
-          value: transformedData[i].value - transformedData[i-3].value
-        });
-      }
-      return qoqData;
-      
-    case 'qoq_pct':
-      // Quarter-over-quarter percentage change
-      if (transformedData.length < 4) return transformedData;
-      const qoqPctData = [];
-      for (let i = 3; i < transformedData.length; i++) {
-        const prevValue = transformedData[i-3].value;
-        qoqPctData.push({
-          ...transformedData[i],
-          value: prevValue !== 0 ? ((transformedData[i].value - prevValue) / prevValue) * 100 : 0
-        });
-      }
-      return qoqPctData;
-      
-    case 'yoy':
-      // Year-over-year percentage change
-      if (transformedData.length < 12) return transformedData;
-      const yoyData = [];
-      for (let i = 12; i < transformedData.length; i++) {
-        const prevValue = transformedData[i-12].value;
-        yoyData.push({
-          ...transformedData[i],
-          value: prevValue !== 0 ? ((transformedData[i].value - prevValue) / prevValue) * 100 : 0
-        });
-      }
-      return yoyData;
-      
-    case 'ma3':
-      // 3-period moving average
-      if (transformedData.length < 3) return transformedData;
-      const ma3Data = [];
-      for (let i = 2; i < transformedData.length; i++) {
-        ma3Data.push({
-          ...transformedData[i],
-          value: (transformedData[i].value + transformedData[i-1].value + transformedData[i-2].value) / 3
-        });
-      }
-      return ma3Data;
-      
-    case 'ma12':
-      // 12-period moving average
-      if (transformedData.length < 12) return transformedData;
-      const ma12Data = [];
-      for (let i = 11; i < transformedData.length; i++) {
-        let sum = 0;
-        for (let j = 0; j < 12; j++) {
-          sum += transformedData[i-j].value;
-        }
-        ma12Data.push({
-          ...transformedData[i],
-          value: sum / 12
-        });
-      }
-      return ma12Data;
-      
-    case 'stddev12':
-      // 12-period standard deviation
-      if (transformedData.length < 12) return transformedData;
-      const stddev12Data = [];
-      for (let i = 11; i < transformedData.length; i++) {
-        const values = [];
-        for (let j = 0; j < 12; j++) {
-          values.push(transformedData[i-j].value);
-        }
-        stddev12Data.push({
-          ...transformedData[i],
-          value: math.std(values)
-        });
-      }
-      return stddev12Data;
-      
-    case 'raw':
-    default:
-      return transformedData;
-  }
-  
-  return transformedData;
-};
-
-// Utility function to aggregate data by time frame
-const aggregateByTimeFrame = (data, timeFrame) => {
-  if (!data || data.length === 0 || timeFrame === 'daily') return data;
-  
-  // Group data by the appropriate time period
-  const groupedData = _.groupBy(data, item => {
-    const date = new Date(item.date);
-    
-    switch(timeFrame) {
-      case 'weekly':
-        // Get the Monday of the week
-        const day = date.getDay();
-        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(date);
-        monday.setDate(diff);
-        return monday.toISOString().split('T')[0];
-        
-      case 'monthly':
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        
-      case 'quarterly':
-        const quarter = Math.floor(date.getMonth() / 3) + 1;
-        return `${date.getFullYear()}-Q${quarter}`;
-        
-      case 'semiannual':
-        const half = date.getMonth() < 6 ? 1 : 2;
-        return `${date.getFullYear()}-H${half}`;
-        
-      case 'annual':
-        return `${date.getFullYear()}`;
-        
-      default:
-        return item.date;
-    }
-  });
-  
-  // Calculate averages for each group
-  return Object.entries(groupedData).map(([period, values]) => {
-    // For grouped periods, calculate the average
-    const sum = values.reduce((acc, val) => acc + val.value, 0);
-    const average = sum / values.length;
-    
-    return {
-      date: values[values.length - 1].date, // Use the last date in the period
-      value: parseFloat(average.toFixed(2)),
-      period
-    };
-  }).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort chronologically
-};
-
-// Main Dashboard Component
+// Dashboard component
 const Dashboard = () => {
-  // State management
+  // State
   const [selectedSource, setSelectedSource] = useState('FRED');
   const [selectedIndicator, setSelectedIndicator] = useState('UNRATE');
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState('monthly');
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState('monthly'); // Note: This state is selected but not used to resample data
   const [selectedTransformation, setSelectedTransformation] = useState('raw');
-  const [chartData, setChartData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [rawData, setRawData] = useState([]); // Store raw data
+  const [chartData, setChartData] = useState([]); // Data to be displayed (potentially transformed)
   const [startDate, setStartDate] = useState('2000-01-01');
   const [endDate, setEndDate] = useState('2025-04-30');
+  const [isLoading, setIsLoading] = useState(false);
   const [watchlist, setWatchlist] = useState([]);
   const [selectedTab, setSelectedTab] = useState('explore');
   const [connectionStatus, setConnectionStatus] = useState('Disconnected');
-  const [socket, setSocket] = useState(null);
-  const [liveData, setLiveData] = useState(null);
 
-  // Find the current selected indicator details
-  const getSelectedIndicatorDetails = () => {
+  const getIndicatorDetails = useCallback(() => {
     const sourceData = DATA_SOURCES[selectedSource] || [];
     return sourceData.find(item => item.id === selectedIndicator) || {};
-  };
+  }, [selectedSource, selectedIndicator]);
 
-  // Function to fetch data
   const fetchData = useCallback(() => {
     setIsLoading(true);
-    setErrorMessage('');
-    
-    const indicatorDetails = getSelectedIndicatorDetails();
-    
-    // Simulate API call with mock data
-    setTimeout(() => {
-      try {
-        // Generate raw data
-        const rawData = generateMockData(
-          selectedIndicator, 
-          indicatorDetails.frequency || 'monthly', 
-          startDate, 
-          endDate
-        );
-        
-        // Apply time frame aggregation
-        const aggregatedData = aggregateByTimeFrame(rawData, selectedTimeFrame);
-        
-        // Apply transformation
-        const transformedData = applyTransformation(aggregatedData, selectedTransformation);
-        
-        setChartData(transformedData);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setErrorMessage('Failed to fetch data. Please try again.');
-        setIsLoading(false);
-      }
-    }, 1000); // Simulated 1 second delay
-  }, [selectedSource, selectedIndicator, selectedTimeFrame, selectedTransformation, startDate, endDate]);
+    const indicatorDetails = getIndicatorDetails();
 
-  // Initial data fetch
+    // Simulate API delay
+    setTimeout(() => {
+      const data = generateMockData(
+        selectedIndicator,
+        indicatorDetails.frequency || 'monthly', // Use indicator's native frequency
+        startDate,
+        endDate
+      );
+      setRawData(data); // Store the fetched raw data
+      // At this point, chartData will be updated by the transformation useEffect
+      setIsLoading(false);
+    }, 500);
+  }, [selectedIndicator, getIndicatorDetails, startDate, endDate]); // Added getIndicatorDetails
+
+  // Initial data load
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Add item to watchlist
+  // Effect to apply transformations when rawData or selectedTransformation changes
+  useEffect(() => {
+    if (rawData.length === 0) {
+      setChartData([]);
+      return;
+    }
+
+    // Placeholder for actual transformation logic
+    // For now, just passes raw data or could be extended
+    let transformed = [...rawData]; // Make a copy to avoid mutating rawData
+
+    // TODO: Implement actual transformation logic based on selectedTransformation
+    // Example (very basic, needs proper date handling for MoM, YoY etc.):
+    if (selectedTransformation === 'mom' && transformed.length > 1) {
+      // This is a conceptual placeholder, real MoM needs date logic
+      // transformed = transformed.map((d, i, arr) => ({
+      //   ...d,
+      //   value: i > 0 ? d.value - arr[i-1].value : 0 // Simplified, not robust
+      // }));
+      console.log("Month-over-Month transformation selected - logic not fully implemented yet.");
+    } else if (selectedTransformation === 'yoy' && transformed.length > 0) {
+      // This is a conceptual placeholder, real YoY needs date logic & matching to prev year
+      console.log("Year-over-Year transformation selected - logic not fully implemented yet.");
+    }
+    // ... other transformations
+
+    setChartData(transformed);
+  }, [rawData, selectedTransformation]);
+
+
   const addToWatchlist = () => {
-    const indicatorDetails = getSelectedIndicatorDetails();
+    const details = getIndicatorDetails();
     const newItem = {
       id: `${selectedSource}-${selectedIndicator}-${Date.now()}`,
       source: selectedSource,
       indicator: selectedIndicator,
-      indicatorName: indicatorDetails.name || selectedIndicator,
-      transformation: selectedTransformation,
-      timeFrame: selectedTimeFrame
+      name: details.name || selectedIndicator,
+      // Store current date range for consistency, or make it dynamic
+      startDate,
+      endDate,
+      frequency: details.frequency || 'monthly'
     };
-    
     setWatchlist(prev => [...prev, newItem]);
   };
 
-  // Remove item from watchlist
   const removeFromWatchlist = (id) => {
     setWatchlist(prev => prev.filter(item => item.id !== id));
   };
-  
-  // WebSocket connection handling
+
   const connectWebSocket = () => {
-    if (socket !== null) {
-      socket.close();
-    }
-    
-    // This would be your actual WebSocket URL from AWS API Gateway
-    const mockWebSocketUrl = 'wss://example.execute-api.us-east-1.amazonaws.com/production';
-    
-    // Mock WebSocket connection
-    console.log(`Connecting to ${mockWebSocketUrl}`);
     setConnectionStatus('Connecting...');
-    
-    // Simulate connection success after delay
-    setTimeout(() => {
-      setConnectionStatus('Connected');
-      setLiveData({
-        timestamp: new Date().toISOString(),
-        indicator: selectedIndicator,
-        value: (Math.random() * 10).toFixed(2)
-      });
-      
-      // Simulate data updates every 5 seconds
-      const interval = setInterval(() => {
-        setLiveData(prev => ({
-          timestamp: new Date().toISOString(),
-          indicator: selectedIndicator,
-          value: (parseFloat(prev.value) + (Math.random() - 0.5)).toFixed(2)
-        }));
-      }, 5000);
-      
-      // Store the interval ID to clear it later
-      setSocket({ close: () => clearInterval(interval) });
-    }, 1500);
-  };
-  
-  // Disconnect WebSocket
-  const disconnectWebSocket = () => {
-    if (socket !== null) {
-      socket.close();
-      setSocket(null);
-      setConnectionStatus('Disconnected');
-    }
+    setTimeout(() => setConnectionStatus('Connected'), 1000);
   };
 
-  // Find crisis events that should be shown on the chart
-  const getVisibleCrises = () => {
-    if (!chartData || chartData.length === 0) return [];
-    
-    const chartStartDate = new Date(chartData[0].date);
-    const chartEndDate = new Date(chartData[chartData.length - 1].date);
-    
-    return FINANCIAL_CRISES.filter(crisis => {
-      if (crisis.date) {
-        const crisisDate = new Date(crisis.date);
-        return crisisDate >= chartStartDate && crisisDate <= chartEndDate;
-      } else if (crisis.startDate && crisis.endDate) {
-        const crisisStartDate = new Date(crisis.startDate);
-        const crisisEndDate = new Date(crisis.endDate);
-        return (
-          (crisisStartDate >= chartStartDate && crisisStartDate <= chartEndDate) ||
-          (crisisEndDate >= chartStartDate && crisisEndDate <= chartEndDate) ||
-          (crisisStartDate <= chartStartDate && crisisEndDate >= chartEndDate)
-        );
-      }
-      return false;
-    });
+  const disconnectWebSocket = () => {
+    setConnectionStatus('Disconnected');
   };
+
+  // Memoize watchlist item data to prevent re-generation on every render unless dependencies change
+  const WatchlistItemChart = React.memo(({ item }) => {
+    const [itemData, setItemData] = useState([]);
+
+    useEffect(() => {
+        // Generate data once when item props change
+        const data = generateMockData(
+            item.indicator,
+            item.frequency,
+            item.startDate, // Use item specific start/end or global ones
+            item.endDate
+        );
+        setItemData(data);
+    }, [item.indicator, item.frequency, item.startDate, item.endDate]);
+
+
+    if (!itemData.length) return <div className="h-48 flex items-center justify-center"><p className="text-gray-400 text-xs">Loading data...</p></div>;
+
+    return (
+        <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                    data={itemData}
+                    margin={{ top: 5, right: 20, left: -20, bottom: 5 }} // Adjust margins for mini chart
+                >
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickFormatter={(tick) => new Date(tick).getFullYear()} />
+                    <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
+                    <Tooltip contentStyle={{ fontSize: '10px' }} />
+                    <Line type="monotone" dataKey="value" stroke="#3B82F6" dot={false} strokeWidth={1.5}/>
+                </LineChart>
+            </ResponsiveContainer>
+        </div>
+    );
+});
+
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Financial Data Dashboard</h1>
-        
-        {/* Main tabs */}
+
+        {/* Tabs */}
         <div className="mb-6">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
               <button
                 onClick={() => setSelectedTab('explore')}
                 className={`mr-4 py-2 px-4 font-medium text-sm ${
-                  selectedTab === 'explore' 
-                    ? 'border-b-2 border-blue-500 text-blue-600' 
+                  selectedTab === 'explore'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
               >
@@ -486,8 +251,8 @@ const Dashboard = () => {
               <button
                 onClick={() => setSelectedTab('watchlist')}
                 className={`mr-4 py-2 px-4 font-medium text-sm ${
-                  selectedTab === 'watchlist' 
-                    ? 'border-b-2 border-blue-500 text-blue-600' 
+                  selectedTab === 'watchlist'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
               >
@@ -496,8 +261,8 @@ const Dashboard = () => {
               <button
                 onClick={() => setSelectedTab('live')}
                 className={`py-2 px-4 font-medium text-sm ${
-                  selectedTab === 'live' 
-                    ? 'border-b-2 border-blue-500 text-blue-600' 
+                  selectedTab === 'live'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
               >
@@ -506,12 +271,12 @@ const Dashboard = () => {
             </nav>
           </div>
         </div>
-        
+
         {/* Explore Data Tab */}
         {selectedTab === 'explore' && (
-          <div className="bg-white shadow-md rounded-lg p-6">
+          <div className="bg-white shadow rounded-lg p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {/* Data Source Selector */}
+              {/* Data Source */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Data Source</label>
                 <select
@@ -520,59 +285,62 @@ const Dashboard = () => {
                     setSelectedSource(e.target.value);
                     setSelectedIndicator(DATA_SOURCES[e.target.value][0]?.id || '');
                   }}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
+                  className="w-full p-2 border rounded bg-white"
                 >
                   {Object.keys(DATA_SOURCES).map(source => (
                     <option key={source} value={source}>{source}</option>
                   ))}
                 </select>
               </div>
-              
-              {/* Indicator Selector */}
+
+              {/* Indicator */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Indicator</label>
                 <select
                   value={selectedIndicator}
                   onChange={(e) => setSelectedIndicator(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
+                  className="w-full p-2 border rounded bg-white"
                 >
                   {(DATA_SOURCES[selectedSource] || []).map(indicator => (
                     <option key={indicator.id} value={indicator.id}>{indicator.name}</option>
                   ))}
                 </select>
               </div>
-              
-              {/* Time Frame Selector */}
+
+              {/* Time Frame (Note: this is not used to resample mock data currently) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Time Frame</label>
                 <select
                   value={selectedTimeFrame}
                   onChange={(e) => setSelectedTimeFrame(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
+                  className="w-full p-2 border rounded bg-white"
+                  disabled // Disabled as it's not used for mock data resampling
                 >
                   {TIME_FRAMES.map(frame => (
                     <option key={frame.id} value={frame.id}>{frame.name}</option>
                   ))}
                 </select>
+                 <p className="text-xs text-gray-400 mt-1">Native frequency used for mock data.</p>
               </div>
-              
-              {/* Transformation Selector */}
+
+              {/* Transformation */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Transformation</label>
                 <select
                   value={selectedTransformation}
                   onChange={(e) => setSelectedTransformation(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
+                  className="w-full p-2 border rounded bg-white"
                 >
                   {TRANSFORMATIONS.map(transform => (
                     <option key={transform.id} value={transform.id}>{transform.name}</option>
                   ))}
                 </select>
+                 {selectedTransformation !== 'raw' && <p className="text-xs text-orange-500 mt-1">Note: Transformation logic is conceptual.</p>}
               </div>
             </div>
-            
+
             <div className="flex flex-wrap gap-4 mb-6">
-              {/* Date Range Pickers */}
+              {/* Date Range */}
               <div className="flex items-center gap-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
@@ -580,7 +348,7 @@ const Dashboard = () => {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
+                    className="p-2 border rounded bg-white"
                   />
                 </div>
                 <div>
@@ -589,102 +357,96 @@ const Dashboard = () => {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
+                    className="p-2 border rounded bg-white"
                   />
                 </div>
               </div>
-              
+
               {/* Action Buttons */}
               <div className="flex items-end gap-2">
                 <button
                   onClick={fetchData}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                   disabled={isLoading}
                 >
                   {isLoading ? 'Loading...' : 'Update Chart'}
                 </button>
-                
+
                 <button
                   onClick={addToWatchlist}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
                 >
                   Add to Watchlist
                 </button>
               </div>
             </div>
-            
-            {/* Error Message */}
-            {errorMessage && (
-              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
-                {errorMessage}
-              </div>
-            )}
-            
-            {/* Data Chart */}
+
+            {/* Chart */}
             <div className="h-96 mb-4">
-              {isLoading ? (
-                <div className="h-full flex items-center justify-center">
-                  <p className="text-gray-500">Loading data...</p>
-                </div>
-              ) : chartData.length > 0 ? (
+              {isLoading && (
+                 <div className="h-full flex items-center justify-center">
+                    <p className="text-gray-500">Loading chart data...</p>
+                 </div>
+              )}
+              {!isLoading && chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={chartData}
-                    margin={{ top: 20, right: 30, left: 30, bottom: 5 }}
+                    data={chartData} // Use potentially transformed data
+                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }} // Increased bottom margin for XAxis labels
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
+                    <XAxis
                       dataKey="date"
                       tick={{ fontSize: 12 }}
-                      tickFormatter={(tick) => {
-                        const date = new Date(tick);
-                        return date.toLocaleDateString(undefined, { year: '2-digit', month: 'short' });
-                      }}
+                      angle={-30} // Angle ticks for better readability if dates are many
+                      textAnchor="end" // Adjust anchor for angled ticks
+                      minTickGap={30} // Show fewer ticks if crowded
                     />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value) => [
-                        `${parseFloat(value).toFixed(2)}`, 
-                        getSelectedIndicatorDetails().name || selectedIndicator
-                      ]}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString(undefined, { 
-                        year: 'numeric', month: 'long', day: 'numeric' 
-                      })}
-                    />
+                    <YAxis tick={{ fontSize: 12 }} domain={['auto', 'auto']}/>
+                    <Tooltip />
                     <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="value" 
-                      name={getSelectedIndicatorDetails().name || selectedIndicator} 
-                      stroke="#3B82F6" 
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      name={getIndicatorDetails().name || selectedIndicator}
+                      stroke="#3B82F6"
                       strokeWidth={2}
                       dot={{ r: 2 }}
                       activeDot={{ r: 6 }}
                     />
-                    
-                    {/* Financial Crisis Reference Lines & Areas */}
-                    {getVisibleCrises().map(crisis => {
+
+                    {/* Crisis Markers */}
+                    {FINANCIAL_CRISES.map(crisis => {
+                      // Ensure crisis date is within the chart's visible range for ReferenceLine/Area
+                      const crisisStartDate = crisis.date || crisis.startDate;
+                      const crisisEndDate = crisis.date || crisis.endDate;
+                      
+                      if (new Date(crisisStartDate) > new Date(endDate) || new Date(crisisEndDate) < new Date(startDate)) {
+                          return null; // Don't render if crisis is outside current date range
+                      }
+
                       if (crisis.date) {
-                        // Single date crisis (like Black Monday)
                         return (
                           <ReferenceLine
                             key={crisis.name}
                             x={crisis.date}
-                            stroke="red"
-                            strokeDasharray="3 3"
-                            label={<Label value={crisis.name} position="insideTopRight" fill="red" />}
-                          />
+                            stroke="rgba(255, 0, 0, 0.7)"
+                            strokeDasharray="4 4"
+                          >
+                             <Label value={crisis.name} position="insideTopRight" fill="rgba(255,0,0,0.7)" fontSize={10} angle={-45} dy={-5} dx={5}/>
+                          </ReferenceLine>
                         );
                       } else if (crisis.startDate && crisis.endDate) {
-                        // Period crisis (like 2008 Financial Crisis)
                         return (
                           <ReferenceArea
                             key={crisis.name}
                             x1={crisis.startDate}
                             x2={crisis.endDate}
                             fill="rgba(255, 0, 0, 0.1)"
-                            label={<Label value={crisis.name} position="insideTopRight" fill="red" />}
-                          />
+                            stroke="rgba(255, 0, 0, 0.3)"
+                          >
+                            <Label value={crisis.name} position="insideTopRight" fill="rgba(255,0,0,0.7)" fontSize={10} angle={-45} dy={-5} dx={5}/>
+                          </ReferenceArea>
                         );
                       }
                       return null;
@@ -692,16 +454,16 @@ const Dashboard = () => {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center">
-                  <p className="text-gray-500">No data available.</p>
+                !isLoading && <div className="h-full flex items-center justify-center">
+                  <p className="text-gray-500">No data available or data is empty.</p>
                 </div>
               )}
             </div>
-            
-            {/* Data Details and Statistics */}
-            {chartData.length > 0 && (
-              <div className="bg-gray-50 p-4 rounded-md">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Statistics</h3>
+
+            {/* Statistics */}
+            {!isLoading && chartData.length > 0 && (
+              <div className="bg-gray-50 p-4 rounded">
+                <h3 className="text-lg font-semibold mb-2">Statistics ({selectedTransformation} data)</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Min</p>
@@ -724,108 +486,69 @@ const Dashboard = () => {
             )}
           </div>
         )}
-        
+
         {/* Watchlist Tab */}
         {selectedTab === 'watchlist' && (
-          <div className="bg-white shadow-md rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Your Watchlist</h2>
-            
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-xl font-semibold mb-4">Your Watchlist</h2>
             {watchlist.length === 0 ? (
               <p className="text-gray-500">Your watchlist is empty. Add indicators from the Explore tab.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {watchlist.map(item => (
                   <div key={item.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h3 className="text-lg font-medium text-gray-800">{item.indicatorName}</h3>
-                        <p className="text-sm text-gray-500">
-                          {item.source} | {TIME_FRAMES.find(t => t.id === item.timeFrame)?.name || item.timeFrame} | 
-                          {TRANSFORMATIONS.find(t => t.id === item.transformation)?.name || item.transformation}
-                        </p>
+                        <h3 className="text-lg font-medium">{item.name}</h3>
+                        <p className="text-sm text-gray-500">{item.source} ({item.indicator})</p>
                       </div>
                       <button
                         onClick={() => removeFromWatchlist(item.id)}
-                        className="text-red-600 hover:text-red-800"
+                        className="text-red-500 hover:text-red-700 text-sm"
                       >
                         Remove
                       </button>
                     </div>
-                    
-                    {/* Mini Chart for Watchlist Item */}
-                    <div className="h-48">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={generateMockData(
-                            item.indicator, 
-                            DATA_SOURCES[item.source]?.find(i => i.id === item.indicator)?.frequency || 'monthly',
-                            startDate,
-                            endDate
-                          )}
-                          margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-                        >
-                          <XAxis 
-                            dataKey="date" 
-                            tick={{ fontSize: 10 }}
-                            tickFormatter={(tick) => {
-                              const date = new Date(tick);
-                              return date.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
-                            }}
-                          />
-                          <YAxis tick={{ fontSize: 10 }} />
-                          <Tooltip />
-                          <Line 
-                            type="monotone" 
-                            dataKey="value" 
-                            stroke="#3B82F6" 
-                            dot={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
+                    <WatchlistItemChart item={item} />
                   </div>
                 ))}
               </div>
             )}
           </div>
         )}
-        
+
         {/* Live Data Tab */}
         {selectedTab === 'live' && (
-          <div className="bg-white shadow-md rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Live Data Feed</h2>
-            
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-xl font-semibold mb-4">Live Data Feed</h2>
             <div className="mb-4">
               <div className="flex items-center gap-4 mb-6">
                 <p className="text-sm font-medium">
-                  Status: <span className={connectionStatus === 'Connected' ? 'text-green-600' : 'text-red-600'}>{connectionStatus}</span>
+                  Status: <span className={connectionStatus === 'Connected' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>{connectionStatus}</span>
                 </p>
-                
                 {connectionStatus !== 'Connected' ? (
                   <button
                     onClick={connectWebSocket}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                   >
                     Connect to WebSocket
                   </button>
                 ) : (
                   <button
                     onClick={disconnectWebSocket}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
                   >
                     Disconnect
                   </button>
                 )}
               </div>
-              
-              <div className="p-4 bg-gray-50 rounded-md">
-                <h3 className="text-lg font-medium mb-2">AWS WebSocket Connection</h3>
+              <div className="p-4 bg-gray-50 rounded">
+                <h3 className="text-lg font-medium mb-2">AWS WebSocket Connection (Simulation)</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  This section demonstrates the AWS WebSocket integration. In a real application, this would connect to an AWS API Gateway WebSocket API.
+                  This section demonstrates a conceptual AWS WebSocket integration. In a real application, this would connect to an AWS API Gateway WebSocket API.
                 </p>
-                
-                <div className="bg-gray-100 p-3 rounded-md font-mono text-sm">
-                  <pre>// AWS WebSocket Client Code
+                <div className="bg-gray-800 text-gray-200 p-3 rounded font-mono text-xs overflow-x-auto">
+                  <pre>{`// Example AWS WebSocket Client Code (not active in this mock)
 const socket = new WebSocket('wss://your-api-id.execute-api.region.amazonaws.com/stage');
 
 socket.onopen = (event) => {
@@ -840,52 +563,29 @@ socket.onopen = (event) => {
 socket.onmessage = (event) => {
   const data = JSON.parse(event.data);
   console.log('Received data:', data);
-  // Update your UI with the new data
-  updateLiveDataUI(data);
+  // updateLiveDataUI(data); // Function to update UI with live data
 };
 
 socket.onclose = () => {
   console.log('Disconnected from AWS WebSocket API');
-};</pre>
+};
+
+socket.onerror = (error) => {
+  console.error('WebSocket Error:', error);
+};`}</pre>
                 </div>
               </div>
             </div>
-            
-            {liveData && (
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-2">Latest Data</h3>
-                <div className="bg-blue-50 p-4 rounded-md">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Timestamp</p>
-                      <p className="font-medium">
-                        {new Date(liveData.timestamp).toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Indicator</p>
-                      <p className="font-medium">
-                        {getSelectedIndicatorDetails().name || selectedIndicator}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Value</p>
-                      <p className="font-medium">{liveData.value}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
             <div className="mt-6">
-              <h3 className="text-lg font-medium mb-2">AWS Setup Instructions</h3>
-              <div className="bg-gray-50 p-4 rounded-md">
+              <h3 className="text-lg font-medium mb-2">AWS Setup Instructions (Conceptual)</h3>
+              <div className="bg-gray-50 p-4 rounded">
                 <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
-                  <li>Create an API Gateway WebSocket API in your AWS Console</li>
-                  <li>Set up routes for 'connect', 'disconnect', and 'default'</li>
-                  <li>Create Lambda functions to handle each route</li>
-                  <li>Implement subscription logic in your Lambda functions</li>
-                  <li>Deploy your API and update the connection URL in this application</li>
+                  <li>Create an API Gateway WebSocket API in your AWS Console.</li>
+                  <li>Define routes (e.g., `$connect`, `$disconnect`, `$default`, custom action routes).</li>
+                  <li>Integrate routes with backend services (e.g., Lambda functions) to handle connections, subscriptions, and data broadcasting.</li>
+                  <li>Lambda functions would manage connection IDs and publish data updates to subscribed clients using `ApiGatewayManagementApi`.</li>
+                  <li>Deploy your API and update the WebSocket URL in your client application.</li>
+                  <li>Implement authentication/authorization (e.g., Lambda authorizer).</li>
                 </ol>
               </div>
             </div>
