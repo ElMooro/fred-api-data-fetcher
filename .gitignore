@@ -15,11 +15,16 @@
 .env.development.local
 .env.test.local
 .env.production.local
+.env
+.env.development
+.env.production
 
+# aws
+aws-infrastructure/lambda/.env
+lambda/.env
+lambda-function.zip
+
+# logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# environment variables
-.env
-.env.production

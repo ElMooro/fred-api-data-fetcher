@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
+  LineChart, Line, XAxis, YAxis, Tooltip, 
   ResponsiveContainer
 } from 'recharts';
+import { TRANSFORMATIONS } from '../constants/dataConstants';
 import { DataService } from '../services/DataService';
 import { AppError, ERROR_TYPES, ERROR_MESSAGES } from '../constants';
 import { Logger } from '../utils/Logger';
 import LoadingIndicator from './LoadingIndicator';
-import { TRANSFORMATIONS } from '../constants/dataConstants';
 
 const WatchlistItemChart = React.memo(({ item }) => {
   const [itemData, setItemData] = useState([]);
