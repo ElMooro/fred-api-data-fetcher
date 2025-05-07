@@ -5,212 +5,895 @@ import {
 } from 'recharts';
 import * as math from 'mathjs';
 import _ from 'lodash';
-import ErrorMessage from './ErrorMessage';
-import LoadingIndicator from './LoadingIndicator';
-import EmptyState from './EmptyState';
-import WatchlistItemChart from './WatchlistItemChart';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { CONFIG, ERROR_TYPES, ERROR_MESSAGES, APP_VERSION, AppError } from '../constants';
-import { FINANCIAL_CRISES, DATA_SOURCES, TRANSFORMATIONS, TIME_FRAMES } from '../constants/dataConstants';
-import { DataService } from '../services/DataService';
-import { WebSocketService } from '../services/WebSocketService';
-import { parseDate, validateDateRange, formatValue, debounce } from '../utils';
-import { Logger } from '../utils/Logger';
 
+// Constants
+const APP_VERSION = '2.0.0';
+
+// Financial Crisis Events for visualizing on charts
+const FINANCIAL_CRISES = [
+  {
+    name: "2008 Financial Crisis",
+    startDate: "2008-01-01",
+    endDate: "2009-06-30",
+    description: "Global financial crisis triggered by the subprime mortgage market",
+    severity: "high"
+  },
+  {
+    name: "COVID-19 Crash",
+    date: "2020-03-15",
+    description: "Market crash due to the COVID-19 pandemic",
+    severity: "high"
+  },
+  {
+    name: "Dot-com Bubble",
+    startDate: "2000-03-01",
+    endDate: "2002-10-01",
+    description: "Tech stock bubble burst of early 2000s",
+    severity: "medium"
+  },
+];
+
+// Real-time data simulation configuration
+const LIVE_UPDATE_INTERVAL = 3000; // Update every 3 seconds
+const LIVE_DATA_POINTS = 50; // Maximum data points to display
+const LIVE_DATA_CONFIG = {
+  UNRATE: {
+    baseValue: 3.8,
+    volatility: 0.05,
+    volatilityPattern: 'normal', // normal distribution
+    unit: "%",
+    color: "#3B82F6", // blue
+    meanReversion: 0.1, // strength of pull toward the mean
+    tickInterval: 0.1, // minimum tick size
+    displayOnSecondaryAxis: false,
+    correlations: {
+      GDP: -0.45, // unemployment tends to be negatively correlated with GDP
+      FEDFUNDS: 0.2 // slightly positive correlation with interest rates
+    }
+  },
+  GDP: {
+    baseValue: 21.5,
+    volatility: 0.01,
+    volatilityPattern: 'lognormal', // log-normal distribution for economic data
+    unit: "Trillion USD",
+    color: "#10B981", // green
+    meanReversion: 0.05,
+    tickInterval: 0.01,
+    displayOnSecondaryAxis: true,
+    correlations: {
+      UNRATE: -0.45,
+      FEDFUNDS: 0.1
+    }
+  },
+  FEDFUNDS: {
+    baseValue: 5.25,
+    volatility: 0.02,
+    volatilityPattern: 'step', // step function pattern like Fed decisions
+    unit: "%",
+    color: "#F59E0B", // amber
+    meanReversion: 0.2,
+    tickInterval: 0.25, // Fed typically moves in 25bp increments
+    displayOnSecondaryAxis: false,
+    correlations: {
+      UNRATE: 0.2,
+      GDP: 0.1
+    }
+  },
+  INFLATION: {
+    baseValue: 3.2,
+    volatility: 0.04,
+    volatilityPattern: 'normal',
+    unit: "%",
+    color: "#EF4444", // red
+    meanReversion: 0.08,
+    tickInterval: 0.1,
+    displayOnSecondaryAxis: false,
+    correlations: {
+      UNRATE: -0.1,
+      GDP: 0.15,
+      FEDFUNDS: 0.6 // Fed funds rate is strongly correlated with inflation
+    }
+  }
+};
+
+// Sample data generators for different indicators
+const generateUnemploymentData = (startDate, endDate) => {
+  const data = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  // Baseline unemployment rate
+  let rate = 5.1;
+
+  // Generate monthly data points
+  let currentDate = new Date(start);
+  while (currentDate <= end) {
+    // Add seasonality (unemployment tends to be higher in winter months)
+    const month = currentDate.getMonth();
+    const seasonalEffect = month >= 10 || month <= 1 ? 0.2 : month >= 5 && month <= 8 ? -0.1 : 0;
+
+    // Add some trend
+    const yearsSinceStart = (currentDate - start) / (1000 * 60 * 60 * 24 * 365);
+    const trend = Math.sin(yearsSinceStart * Math.PI) * 0.5;
+
+    // Add crisis effects
+    let crisisImpact = 0;
+
+    // 2008 Financial Crisis effect
+    if (currentDate >= new Date("2008-01-01") && currentDate <= new Date("2009-12-31")) {
+      const monthsInto2008Crisis = (currentDate - new Date("2008-01-01")) / (1000 * 60 * 60 * 24 * 30);
+      crisisImpact += Math.min(3.5, monthsInto2008Crisis * 0.3);
+    }
+
+    // COVID effect in 2020
+    if (currentDate >= new Date("2020-03-01") && currentDate <= new Date("2020-09-30")) {
+      const covidImpactFactor = currentDate <= new Date("2020-04-30") ? 5 :
+                                currentDate <= new Date("2020-06-30") ? 3 : 1;
+      crisisImpact += covidImpactFactor;
+    }
+
+    // Random noise
+    const noise = (Math.random() - 0.5) * 0.2;
+
+    // Calculate final rate
+    rate = rate + trend + seasonalEffect + crisisImpact + noise;
+
+    // Ensure rate doesn't go below reasonable minimum
+    rate = Math.max(3.4, rate);
+
+    data.push({
+      date: currentDate.toISOString().split('T')[0],
+      value: parseFloat(rate.toFixed(1))
+    });
+
+    // Move to next month
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+
+  return data;
+};
+
+const generateGDPData = (startDate, endDate) => {
+  const data = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  // Starting GDP value (in trillions)
+  let gdp = 14.5;
+
+  // Generate quarterly data
+  let currentDate = new Date(start);
+  currentDate.setDate(1); // Start at beginning of month
+
+  // Adjust to start at quarter
+  const monthOffset = currentDate.getMonth() % 3;
+  if (monthOffset !== 0) {
+    currentDate.setMonth(currentDate.getMonth() + (3 - monthOffset));
+  }
+
+  while (currentDate <= end) {
+    // Base growth rate (average 2-3% annually, so ~0.5-0.75% quarterly)
+    let quarterlyGrowth = 0.006 + (Math.random() * 0.002);
+
+    // Seasonal effects (Q4 often stronger due to holiday spending)
+    const quarter = Math.floor(currentDate.getMonth() / 3) + 1;
+    if (quarter === 4) quarterlyGrowth += 0.002;
+
+    // Crisis effects
+    if (currentDate >= new Date("2008-07-01") && currentDate <= new Date("2009-06-30")) {
+      // 2008 financial crisis
+      quarterlyGrowth -= 0.015 + (Math.random() * 0.01);
+    }
+
+    if (currentDate >= new Date("2020-01-01") && currentDate <= new Date("2020-06-30")) {
+      // COVID-19 impact
+      if (currentDate <= new Date("2020-03-31")) {
+        quarterlyGrowth -= 0.05;
+      } else {
+        quarterlyGrowth -= 0.12;
+      }
+    }
+
+    // Apply growth to GDP
+    gdp = gdp * (1 + quarterlyGrowth);
+
+    data.push({
+      date: currentDate.toISOString().split('T')[0],
+      value: parseFloat(gdp.toFixed(3))
+    });
+
+    // Move to next quarter
+    currentDate.setMonth(currentDate.getMonth() + 3);
+  }
+
+  return data;
+};
+
+const generateFedFundsData = (startDate, endDate) => {
+  const data = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  // Starting federal funds rate
+  let rate = 3.5;
+
+  // Generate monthly data
+  let currentDate = new Date(start);
+  while (currentDate <= end) {
+    // Fed tends to move rates in 0.25% increments
+    // Rates tend to be more stable over time with periodic adjustments
+
+    // Crisis response - lower rates during crises
+    if (currentDate >= new Date("2007-09-01") && currentDate <= new Date("2008-12-31")) {
+      // Decreasing rates during 2008 crisis
+      if (rate > 0.25) {
+        // Modeling the dramatic rate cuts
+        if (Math.random() < 0.4) {
+          rate -= 0.25;
+        }
+      }
+    } else if (currentDate >= new Date("2009-01-01") && currentDate <= new Date("2015-12-31")) {
+      // Zero lower bound period
+      rate = 0.25;
+    } else if (currentDate >= new Date("2016-01-01") && currentDate <= new Date("2019-12-31")) {
+      // Gradual hiking cycle
+      if (Math.random() < 0.15) {
+        rate += 0.25;
+      }
+    } else if (currentDate >= new Date("2020-03-01") && currentDate <= new Date("2021-12-31")) {
+      // COVID response - emergency cuts
+      if (currentDate <= new Date("2020-04-30")) {
+        rate = 0.25;
+      } else {
+        rate = 0.25; // Maintained at zero lower bound
+      }
+    } else {
+      // Normal times - occasional adjustments
+      if (Math.random() < 0.1) {
+        rate += (Math.random() > 0.5 ? 0.25 : -0.25);
+      }
+    }
+
+    // Ensure rate doesn't go negative or unreasonably high
+    rate = Math.max(0.25, Math.min(8.0, rate));
+
+    data.push({
+      date: currentDate.toISOString().split('T')[0],
+      value: parseFloat(rate.toFixed(2))
+    });
+
+    // Move to next month
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+
+  return data;
+};
+
+// Data generator function based on indicator
+const generateData = (indicator, startDate, endDate) => {
+  switch (indicator) {
+    case 'UNRATE':
+      return generateUnemploymentData(startDate, endDate);
+    case 'GDP':
+      return generateGDPData(startDate, endDate);
+    case 'FEDFUNDS':
+      return generateFedFundsData(startDate, endDate);
+    default:
+      return generateUnemploymentData(startDate, endDate);
+  }
+};
+
+// Apply data transformations
+const transformData = (data, transformationType) => {
+  if (!data || data.length === 0 || !transformationType || transformationType === 'raw') {
+    return [...data]; // Return a copy of the original data
+  }
+
+  // Sort data by date
+  const sortedData = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  switch (transformationType) {
+    case 'mom': // Month-over-Month absolute change
+      return sortedData.map((item, index) => {
+        if (index === 0) return { ...item, value: 0 };
+
+        return {
+          ...item,
+          value: parseFloat((item.value - sortedData[index - 1].value).toFixed(2))
+        };
+      });
+
+    case 'mom_pct': // Month-over-Month percentage change
+      return sortedData.map((item, index) => {
+        if (index === 0) return { ...item, value: 0 };
+
+        const prevValue = sortedData[index - 1].value;
+
+        if (prevValue === 0) {
+          return { ...item, value: 0 }; // Avoid division by zero
+        }
+
+        return {
+          ...item,
+          value: parseFloat(((item.value - prevValue) / Math.abs(prevValue) * 100).toFixed(2))
+        };
+      });
+
+    case 'yoy': // Year-over-Year percentage change
+      return sortedData.map((item) => {
+        const currentDate = new Date(item.date);
+
+        // Find data from approximately one year ago
+        const yearAgoTarget = new Date(currentDate);
+        yearAgoTarget.setFullYear(yearAgoTarget.getFullYear() - 1);
+
+        // Find the closest matching data point from a year ago
+        const yearAgoData = sortedData.find(d => {
+          const dataDate = new Date(d.date);
+          return Math.abs(dataDate - yearAgoTarget) < 45 * 24 * 60 * 60 * 1000; // Within ~45 days
+        });
+
+        if (!yearAgoData) {
+          return { ...item, value: null }; // No year-ago data available
+        }
+
+        if (yearAgoData.value === 0) {
+          return { ...item, value: null }; // Avoid division by zero
+        }
+
+        return {
+          ...item,
+          value: parseFloat(((item.value - yearAgoData.value) / Math.abs(yearAgoData.value) * 100).toFixed(2))
+        };
+      }).filter(item => item.value !== null);
+
+    default:
+      return [...data];
+  }
+};
+
+// Live data simulation utilities
+const generateCorrelatedNoise = (config, currentValues) => {
+  // Base random component - either normal or lognormal
+  let noise;
+
+  if (config.volatilityPattern === 'normal') {
+    // Box-Muller transform for normal distribution
+    const u1 = Math.random();
+    const u2 = Math.random();
+    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+    noise = z0 * config.volatility;
+  } else if (config.volatilityPattern === 'lognormal') {
+    // Log-normal distribution (always positive)
+    const u1 = Math.random();
+    const u2 = Math.random();
+    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+    noise = Math.exp(z0 * config.volatility) - 1;
+  } else if (config.volatilityPattern === 'step') {
+    // Step function (like Fed decisions) - mostly flat with occasional steps
+    if (Math.random() < 0.08) { // 8% chance of a move
+      noise = Math.round(Math.random() > 0.5 ? 1 : -1) * config.tickInterval;
+    } else {
+      noise = 0;
+    }
+  } else {
+    // Default to uniform
+    noise = (Math.random() - 0.5) * 2 * config.volatility;
+  }
+
+  // Add correlations from other indicators
+  let correlatedComponent = 0;
+
+  if (config.correlations && currentValues) {
+    Object.entries(config.correlations).forEach(([indicator, correlation]) => {
+      if (currentValues[indicator] && currentValues[indicator].change) {
+        // Scale the correlation effect by the relative volatilities
+        const otherConfig = LIVE_DATA_CONFIG[indicator];
+        const relativeScale = config.volatility / (otherConfig?.volatility || 1);
+        correlatedComponent += correlation * currentValues[indicator].change * relativeScale;
+      }
+    });
+  }
+
+  return noise + correlatedComponent * 0.5; // Scale down the correlated component
+};
+
+// Generate a new live data point
+const generateLiveDataPoint = (indicator, prevValue, allCurrentValues) => {
+  const config = LIVE_DATA_CONFIG[indicator];
+  
+  // Start with base value if no previous value
+  const baseValue = prevValue === null ? config.baseValue : prevValue;
+  
+  // Generate correlated noise
+  const noise = generateCorrelatedNoise(config, allCurrentValues);
+  
+  // Add mean reversion component
+  const meanReversion = (config.baseValue - baseValue) * config.meanReversion;
+  
+  // Calculate raw change
+  let rawChange = noise + meanReversion;
+  
+  // Quantize to tick size if specified
+  if (config.tickInterval) {
+    rawChange = Math.round(rawChange / config.tickInterval) * config.tickInterval;
+  }
+  
+  // Calculate new value
+  let newValue = baseValue + rawChange;
+  
+  // Ensure reasonable bounds based on indicator
+  if (indicator === 'UNRATE') {
+    newValue = Math.max(3.0, Math.min(10.0, newValue));
+  } else if (indicator === 'FEDFUNDS') {
+    newValue = Math.max(0.0, Math.min(8.0, newValue));
+  } else if (indicator === 'GDP') {
+    newValue = Math.max(15.0, Math.min(30.0, newValue));
+  } else if (indicator === 'INFLATION') {
+    newValue = Math.max(0.0, Math.min(15.0, newValue));
+  }
+  
+  return {
+    value: parseFloat(newValue.toFixed(2)),
+    change: parseFloat((newValue - baseValue).toFixed(2))
+  };
+};
+
+// Indicator metadata for labels and descriptions
+const INDICATORS = {
+  UNRATE: {
+    name: "Unemployment Rate",
+    unit: "%",
+    description: "Percentage of the labor force that is unemployed"
+  },
+  GDP: {
+    name: "Gross Domestic Product",
+    unit: "Trillion USD",
+    description: "Total value of goods and services produced"
+  },
+  FEDFUNDS: {
+    name: "Federal Funds Rate",
+    unit: "%",
+    description: "Interest rate at which banks lend to each other overnight"
+  },
+  INFLATION: {
+    name: "Inflation Rate",
+    unit: "%",
+    description: "Annual change in the Consumer Price Index (CPI)"
+  }
+};
+
+// Transformation metadata
+const TRANSFORMATIONS = [
+  { id: "raw", name: "Raw Data" },
+  { id: "mom", name: "Month-over-Month Change" },
+  { id: "yoy", name: "Year-over-Year % Change" },
+  { id: "mom_pct", name: "Month-over-Month % Change" }
+];
+
+// Simple component for displaying error messages
+const ErrorMessage = React.memo(({ message, onDismiss }) => {
+  if (!message) return null;
+
+  return (
+    <div
+      className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded flex justify-between items-center"
+      role="alert"
+      aria-live="assertive"
+    >
+      <p>{message}</p>
+      <button
+        className="text-red-700 font-bold hover:text-red-900 ml-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+        onClick={onDismiss}
+        aria-label="Dismiss error"
+      >
+        ✕
+      </button>
+    </div>
+  );
+});
+
+// Loading indicator component
+const LoadingIndicator = React.memo(({ message = "Loading..." }) => (
+  <div className="h-full flex items-center justify-center" aria-busy="true" role="status">
+    <div className="flex flex-col items-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+      <p className="text-gray-500">{message}</p>
+    </div>
+  </div>
+));
+
+// Empty state component
+const EmptyState = React.memo(({ message, action, actionLabel }) => (
+  <div className="h-full flex items-center justify-center">
+    <div className="bg-gray-50 p-8 rounded-lg text-center max-w-md">
+      <p className="text-gray-500 mb-4">{message}</p>
+      {action && actionLabel && (
+        <button
+          onClick={action}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  </div>
+));
+
+// Custom tooltip for chart
+const CustomTooltip = React.memo(({ active, payload, label, indicator, transformation }) => {
+  if (active && payload && payload.length) {
+    const indicatorInfo = INDICATORS[indicator] || {};
+    const transformInfo = TRANSFORMATIONS.find(t => t.id === transformation) || {};
+    const isPercentChange = transformation === 'mom_pct' || transformation === 'yoy';
+
+    return (
+      <div className="bg-white p-3 border border-gray-200 shadow-md rounded">
+        <p className="text-gray-600 text-sm font-medium">{new Date(label).toLocaleDateString()}</p>
+        <p className="text-blue-600 font-medium text-lg">
+          {payload[0].value.toFixed(2)}{isPercentChange ? '%' : indicatorInfo.unit ? ` ${indicatorInfo.unit}` : ''}
+        </p>
+        <p className="text-gray-500 text-xs">{transformInfo.name || 'Value'}</p>
+      </div>
+    );
+  }
+
+  return null;
+});
+
+// Live data card component
+const LiveDataCard = React.memo(({ indicator, value, change, lastUpdated }) => {
+  const indicatorInfo = INDICATORS[indicator];
+  const isPositiveChange = change >= 0;
+  
+  return (
+    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+      <div className="flex justify-between items-start mb-2">
+        <h3 className="font-medium text-gray-700">{indicatorInfo.name}</h3>
+        <span 
+          className={`px-2 py-1 rounded-full text-xs font-medium ${
+            isPositiveChange ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}
+        >
+          {isPositiveChange ? '+' : ''}{change}{indicatorInfo.unit}
+        </span>
+      </div>
+      <p className="text-2xl font-bold">{value}{indicatorInfo.unit}</p>
+      <p className="text-xs text-gray-500 mt-2">
+        Last updated: {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : 'Never'}
+      </p>
+    </div>
+  );
+});
+
+// Live chart component
+const LiveChart = React.memo(({ data, indicators }) => {
+  if (!data || !data.length) {
+    return <div className="h-full flex items-center justify-center text-gray-400">No data available</div>;
+  }
+  
+  // Determine which indicators should use the right axis
+  const rightAxisIndicators = indicators.filter(ind => 
+    LIVE_DATA_CONFIG[ind] && LIVE_DATA_CONFIG[ind].displayOnSecondaryAxis
+  );
+  
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+        <XAxis 
+          dataKey="timestamp" 
+          tick={{ fontSize: 10 }}
+          tickFormatter={(time) => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        />
+        <YAxis 
+          yAxisId="left" 
+          orientation="left" 
+          tick={{ fontSize: 10 }} 
+          domain={['auto', 'auto']}
+          tickFormatter={(v) => v.toFixed(1)}
+        />
+        <YAxis 
+          yAxisId="right" 
+          orientation="right" 
+          tick={{ fontSize: 10 }}
+          domain={['auto', 'auto']}
+          tickFormatter={(v) => v.toFixed(1)}
+        />
+        <Tooltip 
+          formatter={(value, name) => {
+            const indicatorInfo = INDICATORS[name];
+            return [`${parseFloat(value).toFixed(2)}${indicatorInfo.unit}`, indicatorInfo.name];
+          }}
+          labelFormatter={(label) => new Date(label).toLocaleTimeString()}
+        />
+        <Legend />
+        
+        {indicators.map(indicator => {
+          const config = LIVE_DATA_CONFIG[indicator];
+          const useRightAxis = rightAxisIndicators.includes(indicator);
+          
+          return (
+            <Line 
+              key={indicator}
+              yAxisId={useRightAxis ? 'right' : 'left'}
+              type="monotone" 
+              dataKey={indicator} 
+              name={INDICATORS[indicator].name} 
+              stroke={config.color}
+              strokeWidth={2}
+              dot={false}
+              isAnimationActive={false}
+              connectNulls={true}
+            />
+          );
+        })}
+      </LineChart>
+    </ResponsiveContainer>
+  );
+});
+
+// Main Dashboard component
 const Dashboard = () => {
-  // State management
-  const [selectedSource, setSelectedSource] = useState('FRED');
+  // Basic state management
+  const [selectedTab, setSelectedTab] = useState('explore');
+  const [rawData, setRawData] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [startDate, setStartDate] = useState('2000-01-01');
+  const [endDate, setEndDate] = useState('2023-12-31');
   const [selectedIndicator, setSelectedIndicator] = useState('UNRATE');
   const [selectedTimeFrame, setSelectedTimeFrame] = useState('monthly');
   const [selectedTransformation, setSelectedTransformation] = useState('raw');
-  const [rawData, setRawData] = useState([]);
-  const [chartData, setChartData] = useState([]);
-  const [startDate, setStartDate] = useState(CONFIG.DATES.DEFAULT_START_DATE);
-  const [endDate, setEndDate] = useState(CONFIG.DATES.DEFAULT_END_DATE);
-  const [isLoading, setIsLoading] = useState(false);
-  const [watchlist, setWatchlist] = useLocalStorage('financial-dashboard-watchlist', []);
-  const [selectedTab, setSelectedTab] = useState('explore');
-  const [connectionStatus, setConnectionStatus] = useState('Disconnected');
-  const [error, setError] = useState('');
-  const [lastUpdated, setLastUpdated] = useState(null);
-  const [liveData, setLiveData] = useState({});
+  const [watchlist, setWatchlist] = useState([]);
   
-  // Get details of the currently selected indicator
-  const getIndicatorDetails = useCallback(() => {
-    const sourceData = DATA_SOURCES[selectedSource] || [];
-    return sourceData.find(item => item.id === selectedIndicator) || {};
-  }, [selectedSource, selectedIndicator]);
+  // Live data state
+  const [liveData, setLiveData] = useState([]);
+  const [liveValues, setLiveValues] = useState({});
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [liveUpdateInterval, setLiveUpdateInterval] = useState(null);
+  const [selectedLiveIndicators, setSelectedLiveIndicators] = useState(['UNRATE', 'FEDFUNDS']);
+  const [performanceMetrics, setPerformanceMetrics] = useState({
+    updateCount: 0,
+    lastUpdateTime: 0,
+    averageUpdateTime: 0
+  });
+
+  // Get indicator details
+  const indicatorDetails = useMemo(() => {
+    return INDICATORS[selectedIndicator] || {};
+  }, [selectedIndicator]);
 
   // Get transformation details
-  const getTransformationDetails = useCallback(() => {
-    return TRANSFORMATIONS.find(item => item.id === selectedTransformation) || {};
+  const transformationDetails = useMemo(() => {
+    return TRANSFORMATIONS.find(t => t.id === selectedTransformation) || {};
   }, [selectedTransformation]);
 
-  // Fetch data with error handling and debouncing for frequent calls
-  const fetchData = useCallback(debounce(() => {
-    setIsLoading(true);
-    setError('');
-    
-    // Validate inputs before making request
+  // Calculate statistics for the data
+  const statistics = useMemo(() => {
+    if (!chartData || chartData.length === 0) {
+      return {
+        min: 0,
+        max: 0,
+        mean: 0,
+        median: 0,
+        stdDev: 0,
+        count: 0
+      };
+    }
+
     try {
-      validateDateRange(startDate, endDate);
-    } catch (validationError) {
-      setError(validationError.message);
-      setIsLoading(false);
-      return;
+      const values = chartData.map(d => d.value).filter(v => !isNaN(v));
+      
+      if (values.length === 0) {
+        return {
+          min: 0,
+          max: 0,
+          mean: 0,
+          median: 0,
+          stdDev: 0,
+          count: 0
+        };
+      }
+      
+      return {
+        min: math.min(values),
+        max: math.max(values),
+        mean: math.mean(values),
+        median: math.median(values),
+        stdDev: math.std(values),
+        count: values.length
+      };
+    } catch (error) {
+      console.error("Error calculating statistics:", error);
+      return {
+        min: 0,
+        max: 0,
+        mean: 0,
+        median: 0,
+        stdDev: 0,
+        count: 0
+      };
     }
-    
-    const indicatorDetails = getIndicatorDetails();
-    if (!indicatorDetails) {
-      setError("Invalid indicator selected");
-      setIsLoading(false);
-      return;
-    }
-    
-    // Use the data service to fetch data
-    DataService.fetchData(
-      selectedIndicator,
-      indicatorDetails.frequency || 'monthly',
-      startDate,
-      endDate
-    )
-      .then(data => {
-        setRawData(data);
-        setLastUpdated(new Date());
-        setIsLoading(false);
-      })
-      .catch(error => {
-        setError(error instanceof AppError ? error.message : ERROR_MESSAGES.GENERAL_ERROR);
-        setIsLoading(false);
-        // Don't clear existing data on error to maintain partial functionality
-      });
-  }, CONFIG.UI.DEBOUNCE_DELAY), [selectedIndicator, getIndicatorDetails, startDate, endDate]);
+  }, [chartData]);
 
-  // Initial data load
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Apply transformations when rawData or selectedTransformation changes
+  // Generate data when indicator, transformation, or dates change
   useEffect(() => {
     if (rawData.length === 0) {
-      setChartData([]);
       return;
     }
 
     try {
-      const transformed = DataService.transformData(rawData, selectedTransformation);
+      const transformed = transformData(rawData, selectedTransformation);
       setChartData(transformed);
     } catch (error) {
-      Logger.error("Error applying transformation:", error);
-      setError(ERROR_MESSAGES.TRANSFORMATION_ERROR);
-      // Fall back to raw data on error
+      console.error("Error applying transformation:", error);
+      setError("Error applying transformation. Showing raw data instead.");
       setChartData([...rawData]);
     }
   }, [rawData, selectedTransformation]);
 
-  // Add current selection to watchlist
-  const addToWatchlist = useCallback(() => {
+  // Handler for updating chart data
+  const updateChart = useCallback(() => {
+    setIsLoading(true);
+    setError('');
+
     try {
-      const details = getIndicatorDetails();
-      const transformDetails = getTransformationDetails();
+      // Simulate API call with setTimeout
+      setTimeout(() => {
+        const newData = generateData(selectedIndicator, startDate, endDate);
+        setRawData(newData);
+        setLastUpdated(new Date());
+        setIsLoading(false);
+      }, 800);
+    } catch (err) {
+      setError(`Error fetching data: ${err.message}`);
+      setIsLoading(false);
+    }
+  }, [selectedIndicator, startDate, endDate]);
+
+  // Initial data load
+  useEffect(() => {
+    updateChart();
+    
+    // Clean up live data connection on component unmount
+    return () => {
+      if (liveUpdateInterval) {
+        clearInterval(liveUpdateInterval);
+      }
+    };
+  }, []);
+
+  // Live data connection management
+  const toggleLiveConnection = useCallback(() => {
+    if (isLiveConnected) {
+      // Disconnect
+      if (liveUpdateInterval) {
+        clearInterval(liveUpdateInterval);
+        setLiveUpdateInterval(null);
+      }
+      setIsLiveConnected(false);
+    } else {
+      // Connect and initialize
+      const initialData = [];
+      const initialValues = {};
       
-      if (!details) {
-        throw new AppError(ERROR_TYPES.GENERAL_ERROR, "Invalid indicator selection");
+      // Create initial values
+      Object.keys(LIVE_DATA_CONFIG).forEach(indicator => {
+        initialValues[indicator] = {
+          value: LIVE_DATA_CONFIG[indicator].baseValue,
+          change: 0,
+          lastUpdated: new Date().toISOString()
+        };
+      });
+      
+      // Create initial data points with all indicators at base values
+      for (let i = 0; i < LIVE_DATA_POINTS; i++) {
+        const timestamp = new Date(Date.now() - (LIVE_DATA_POINTS - i - 1) * LIVE_UPDATE_INTERVAL).toISOString();
+        
+        const dataPoint = { timestamp };
+        Object.keys(LIVE_DATA_CONFIG).forEach(indicator => {
+          dataPoint[indicator] = LIVE_DATA_CONFIG[indicator].baseValue;
+        });
+        
+        initialData.push(dataPoint);
       }
       
-      const newItem = {
-        id: `${selectedSource}-${selectedIndicator}-${Date.now()}`,
-        source: selectedSource,
-        indicator: selectedIndicator,
-        name: details.name || selectedIndicator,
-        transformation: selectedTransformation,
-        transformationName: transformDetails.name || "Raw Data",
-        startDate,
-        endDate,
-        frequency: details.frequency || 'monthly',
-        dateAdded: new Date().toISOString(),
-        metadata: {
-          unit: details.unit || '',
-          description: details.description || ''
-        }
-      };
-      
-      setWatchlist(prev => {
-        // Check if already in watchlist
-        const isDuplicate = prev.some(item => 
-          item.source === newItem.source && 
-          item.indicator === newItem.indicator &&
-          item.transformation === newItem.transformation
-        );
-        
-        if (isDuplicate) {
-          setError(ERROR_MESSAGES.DUPLICATE_WATCHLIST);
-          return prev;
-        }
-        
-        return [...prev, newItem];
+      setLiveData(initialData);
+      setLiveValues(initialValues);
+      setPerformanceMetrics({
+        updateCount: 0,
+        lastUpdateTime: 0,
+        averageUpdateTime: 0
       });
-    } catch (error) {
-      setError(error instanceof AppError ? error.message : `Error adding to watchlist: ${error.message}`);
+      
+      // Start live updates
+      const intervalId = setInterval(() => {
+        const startTime = performance.now();
+        const timestamp = new Date().toISOString();
+        
+        // Update values for each indicator
+        const newValues = {...liveValues};
+        const newDataPoint = { timestamp };
+        
+        Object.keys(LIVE_DATA_CONFIG).forEach(indicator => {
+          const prev = newValues[indicator]?.value || LIVE_DATA_CONFIG[indicator].baseValue;
+          const result = generateLiveDataPoint(indicator, prev, newValues);
+          
+          newValues[indicator] = {
+            value: result.value,
+            change: result.change,
+            lastUpdated: timestamp
+          };
+          
+          newDataPoint[indicator] = result.value;
+        });
+        
+        // Update state
+        setLiveValues(newValues);
+        setLiveData(currentData => {
+          const newData = [...currentData, newDataPoint];
+          if (newData.length > LIVE_DATA_POINTS) {
+            return newData.slice(newData.length - LIVE_DATA_POINTS);
+          }
+          return newData;
+        });
+        
+        // Update performance metrics
+        const endTime = performance.now();
+        const updateTime = endTime - startTime;
+        
+        setPerformanceMetrics(prev => {
+          const newCount = prev.updateCount + 1;
+          const newAverage = ((prev.averageUpdateTime * prev.updateCount) + updateTime) / newCount;
+          
+          return {
+            updateCount: newCount,
+            lastUpdateTime: updateTime,
+            averageUpdateTime: newAverage
+          };
+        });
+      }, LIVE_UPDATE_INTERVAL);
+      
+      setLiveUpdateInterval(intervalId);
+      setIsLiveConnected(true);
     }
-  }, [selectedSource, selectedIndicator, selectedTransformation, startDate, endDate, getIndicatorDetails, getTransformationDetails, setWatchlist]);
+  }, [isLiveConnected, liveValues, liveUpdateInterval]);
 
-  // Remove item from watchlist
+  // Add to watchlist
+  const addToWatchlist = useCallback(() => {
+    const newItem = {
+      id: `item-${Date.now()}`,
+      name: `${indicatorDetails.name || selectedIndicator}`,
+      indicator: selectedIndicator,
+      startDate,
+      endDate,
+      transformation: selectedTransformation,
+      transformationName: transformationDetails.name || 'Raw Data',
+      dateAdded: new Date().toISOString(),
+      data: [...chartData]
+    };
+
+    // Check for duplicates
+    const isDuplicate = watchlist.some(item =>
+      item.indicator === selectedIndicator &&
+      item.transformation === selectedTransformation
+    );
+
+    if (isDuplicate) {
+      setError("This indicator is already in your watchlist.");
+      return;
+    }
+
+    setWatchlist(prev => [...prev, newItem]);
+  }, [selectedIndicator, indicatorDetails, startDate, endDate, selectedTransformation, transformationDetails, chartData, watchlist]);
+
+  // Remove from watchlist
   const removeFromWatchlist = useCallback((id) => {
     setWatchlist(prev => prev.filter(item => item.id !== id));
-  }, [setWatchlist]);
-
-  // Connect to WebSocket for live data
-  useEffect(() => {
-    if (selectedTab === 'live') {
-      const unsubscribeStatus = WebSocketService.onConnectionStatusChange(setConnectionStatus);
-      
-      const unsubscribeMessage = WebSocketService.onMessage(data => {
-        if (data && data.data) {
-          setLiveData(prev => ({
-            ...prev,
-            ...data.data,
-            lastUpdated: data.timestamp
-          }));
-        }
-      });
-      
-      return () => {
-        unsubscribeStatus();
-        unsubscribeMessage();
-      };
-    }
-  }, [selectedTab]);
-
-  // WebSocket connection management
-  const connectWebSocket = useCallback(() => {
-    WebSocketService.connect();
   }, []);
-
-  const disconnectWebSocket = useCallback(() => {
-    WebSocketService.disconnect();
-  }, []);
-
-  // Memoized calculation of statistics to prevent unnecessary recalculations
-  const statistics = useMemo(() => DataService.calculateStatistics(chartData), [chartData]);
-  
-  // Derived state for unit display
-  const indicatorDetails = useMemo(() => getIndicatorDetails(), [getIndicatorDetails]);
-  const transformationDetails = useMemo(() => getTransformationDetails(), [getTransformationDetails]);
-  
-  const isPercentageDisplay = useMemo(() => {
-    return transformationDetails.resultUnit === 'percent' || 
-           (indicatorDetails.unit && indicatorDetails.unit.toLowerCase().includes('percent'));
-  }, [transformationDetails, indicatorDetails]);
-  
-  // Indicator unit for display
-  const displayUnit = useMemo(() => {
-    if (transformationDetails.resultUnit === 'percent') {
-      return '%';
-    }
-    return indicatorDetails.unit || '';
-  }, [transformationDetails, indicatorDetails]);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -280,45 +963,16 @@ const Dashboard = () => {
 
         {/* Explore Data Tab */}
         {selectedTab === 'explore' && (
-          <div 
+          <div
             className="bg-white shadow rounded-lg p-6"
             role="tabpanel"
             id="panel-explore"
             aria-labelledby="tab-explore"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {/* Data Source */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {/* Data Source / Indicator */}
               <div>
-                <label 
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                  htmlFor="data-source"
-                >
-                  Data Source
-                </label>
-                <select
-                  id="data-source"
-                  value={selectedSource}
-                  onChange={(e) => {
-                    setSelectedSource(e.target.value);
-                    // Select first indicator from new source
-                    const firstIndicator = DATA_SOURCES[e.target.value]?.[0]?.id || '';
-                    setSelectedIndicator(firstIndicator);
-                  }}
-                  className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  aria-describedby="data-source-help"
-                >
-                  {Object.keys(DATA_SOURCES).map(source => (
-                    <option key={source} value={source}>{source}</option>
-                  ))}
-                </select>
-                <p id="data-source-help" className="text-xs text-gray-400 mt-1">
-                  Select the data provider
-                </p>
-              </div>
-
-              {/* Indicator */}
-              <div>
-                <label 
+                <label
                   className="block text-sm font-medium text-gray-700 mb-1"
                   htmlFor="indicator"
                 >
@@ -329,46 +983,41 @@ const Dashboard = () => {
                   value={selectedIndicator}
                   onChange={(e) => setSelectedIndicator(e.target.value)}
                   className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  aria-describedby="indicator-help"
                 >
-                  {(DATA_SOURCES[selectedSource] || []).map(indicator => (
-                    <option key={indicator.id} value={indicator.id}>{indicator.name}</option>
+                  {Object.keys(INDICATORS).map(id => (
+                    <option key={id} value={id}>{INDICATORS[id].name}</option>
                   ))}
                 </select>
-                <p id="indicator-help" className="text-xs text-gray-400 mt-1">
-                  {indicatorDetails.description || "Select the economic indicator to display"}
+                <p className="text-xs text-gray-500 mt-1">
+                  {indicatorDetails.description}
                 </p>
               </div>
 
               {/* Time Frame */}
               <div>
-                <label 
+                <label
                   className="block text-sm font-medium text-gray-700 mb-1"
-                  htmlFor="time-frame"
+                  htmlFor="timeframe"
                 >
                   Time Frame
                 </label>
                 <select
-                  id="time-frame"
+                  id="timeframe"
                   value={selectedTimeFrame}
                   onChange={(e) => setSelectedTimeFrame(e.target.value)}
                   className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  aria-describedby="time-frame-help"
                 >
-                  {TIME_FRAMES.map(frame => (
-                    <option key={frame.id} value={frame.id}>{frame.name}</option>
-                  ))}
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="annual">Annual</option>
                 </select>
-                <p id="time-frame-help" className="text-xs text-gray-400 mt-1">
-                  {indicatorDetails.frequency 
-                    ? `Native frequency: ${indicatorDetails.frequency}` 
-                    : "Native frequency used for data generation"}
-                </p>
               </div>
 
               {/* Transformation */}
               <div>
-                <label 
+                <label
                   className="block text-sm font-medium text-gray-700 mb-1"
                   htmlFor="transformation"
                 >
@@ -379,15 +1028,11 @@ const Dashboard = () => {
                   value={selectedTransformation}
                   onChange={(e) => setSelectedTransformation(e.target.value)}
                   className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  aria-describedby="transformation-help"
                 >
                   {TRANSFORMATIONS.map(transform => (
                     <option key={transform.id} value={transform.id}>{transform.name}</option>
                   ))}
                 </select>
-                <p id="transformation-help" className="text-xs text-gray-400 mt-1">
-                  {transformationDetails.description || "Apply mathematical transformation to data"}
-                </p>
               </div>
             </div>
 
@@ -395,7 +1040,7 @@ const Dashboard = () => {
               {/* Date Range */}
               <div className="flex items-center gap-2">
                 <div>
-                  <label 
+                  <label
                     className="block text-sm font-medium text-gray-700 mb-1"
                     htmlFor="start-date"
                   >
@@ -411,7 +1056,7 @@ const Dashboard = () => {
                   />
                 </div>
                 <div>
-                  <label 
+                  <label
                     className="block text-sm font-medium text-gray-700 mb-1"
                     htmlFor="end-date"
                   >
@@ -431,10 +1076,9 @@ const Dashboard = () => {
               {/* Action Buttons */}
               <div className="flex items-end gap-2">
                 <button
-                  onClick={() => fetchData()}
+                  onClick={updateChart}
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isLoading}
-                  aria-busy={isLoading}
                 >
                   {isLoading ? 'Loading...' : 'Update Chart'}
                 </button>
@@ -450,7 +1094,7 @@ const Dashboard = () => {
             </div>
 
             {/* Chart */}
-            <div className="h-96 mb-4" role="region" aria-live="polite">
+            <div className="h-96 mb-4">
               {isLoading ? (
                 <LoadingIndicator message="Loading chart data..." />
               ) : chartData.length > 0 ? (
@@ -466,29 +1110,16 @@ const Dashboard = () => {
                       angle={-30}
                       textAnchor="end"
                       minTickGap={30}
-                      padding={{ left: 10, right: 10 }}
                     />
-                    <YAxis 
-                      tick={{ fontSize: 12 }} 
-                      domain={['auto', 'auto']} 
-                      tickFormatter={(value) => isPercentageDisplay
-                        ? `${value}%` 
-                        : value.toLocaleString()
-                      }
-                      label={{ 
-                        value: displayUnit, 
-                        angle: -90, 
-                        position: 'insideLeft',
-                        style: { textAnchor: 'middle' }
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      domain={['auto', 'auto']}
+                      tickFormatter={(value) => {
+                        const isPercentage = selectedTransformation === 'mom_pct' || selectedTransformation === 'yoy';
+                        return `${value}${isPercentage ? '%' : ''}`;
                       }}
                     />
-                    <Tooltip 
-                      formatter={(value) => [
-                        `${parseFloat(value).toFixed(2)}${isPercentageDisplay ? '%' : ''}`,
-                        transformationDetails.name || "Value"
-                      ]}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString()}
-                    />
+                    <Tooltip content={<CustomTooltip indicator={selectedIndicator} transformation={selectedTransformation} />} />
                     <Legend />
                     <Line
                       type="monotone"
@@ -498,80 +1129,61 @@ const Dashboard = () => {
                       strokeWidth={2}
                       dot={{ r: 2 }}
                       activeDot={{ r: 6 }}
-                      isAnimationActive={true}
                     />
 
-                    {/* Crisis Markers */}
-                    {FINANCIAL_CRISES.map(crisis => {
-                      // Ensure crisis date is within the chart's visible range for ReferenceLine/Area
-                      const crisisStartDate = crisis.date || crisis.startDate;
-                      const crisisEndDate = crisis.date || crisis.endDate;
-                      
-                      if (!crisisStartDate || !parseDate(crisisStartDate) || 
-                          (crisisEndDate && !parseDate(crisisEndDate))) {
-                        return null; // Skip if dates are invalid
-                      }
-                      
-                      if (parseDate(crisisStartDate) > parseDate(endDate) || 
-                          parseDate(crisisEndDate || crisisStartDate) < parseDate(startDate)) {
-                        return null; // Don't render if crisis is outside current date range
-                      }
-
-                      // Different styling based on severity
-                      const severityColor = crisis.severity === "extreme" ? "rgba(220, 38, 38, 0.9)" : 
-                                          crisis.severity === "high" ? "rgba(239, 68, 68, 0.7)" :
-                                          "rgba(251, 113, 133, 0.7)";
-                      
+                    {/* Financial Crisis Markers */}
+                    {selectedTransformation === 'raw' && FINANCIAL_CRISES.map(crisis => {
                       if (crisis.date) {
-                        return (
-                          <ReferenceLine
-                            key={crisis.name}
-                            x={crisis.date}
-                            stroke={severityColor}
-                            strokeDasharray="4 4"
-                            ifOverflow="extendDomain"
-                          >
-                            <Label 
-                              value={crisis.name} 
-                              position="insideTopRight" 
-                              fill={severityColor}
-                              fontSize={10} 
-                              angle={-45} 
-                              dy={-5} 
-                              dx={5}
+                        const crisisDate = new Date(crisis.date);
+                        // Only show if within the current date range
+                        if (crisisDate >= new Date(startDate) && crisisDate <= new Date(endDate)) {
+                          return (
+                            <ReferenceLine
+                              key={crisis.name}
+                              x={crisis.date}
+                              stroke="red"
+                              strokeDasharray="3 3"
+                              label={{
+                                value: crisis.name,
+                                position: 'top',
+                                fill: 'red',
+                                fontSize: 10
+                              }}
                             />
-                          </ReferenceLine>
-                        );
+                          );
+                        }
                       } else if (crisis.startDate && crisis.endDate) {
-                        return (
-                          <ReferenceArea
-                            key={crisis.name}
-                            x1={crisis.startDate}
-                            x2={crisis.endDate}
-                            fill={`${severityColor.replace('0.7', '0.1')}`}
-                            stroke={severityColor}
-                            ifOverflow="extendDomain"
-                          >
-                            <Label 
-                              value={crisis.name} 
-                              position="insideTopRight" 
-                              fill={severityColor}
-                              fontSize={10} 
-                              angle={-45} 
-                              dy={-5} 
-                              dx={5}
+                        const startDate2 = new Date(crisis.startDate);
+                        const endDate2 = new Date(crisis.endDate);
+
+                        // Check if crisis period overlaps with chart period
+                        if (startDate2 <= new Date(endDate) && endDate2 >= new Date(startDate)) {
+                          return (
+                            <ReferenceArea
+                              key={crisis.name}
+                              x1={crisis.startDate}
+                              x2={crisis.endDate}
+                              fill="rgba(255, 0, 0, 0.1)"
+                              stroke="red"
+                              strokeOpacity={0.5}
+                              label={{
+                                value: crisis.name,
+                                position: 'insideTopLeft',
+                                fill: 'red',
+                                fontSize: 10
+                              }}
                             />
-                          </ReferenceArea>
-                        );
+                          );
+                        }
                       }
                       return null;
                     })}
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyState 
-                  message="No data available. Try adjusting your filters or date range." 
-                  action={() => fetchData()}
+                <EmptyState
+                  message="No data available. Try adjusting your filters or date range."
+                  action={updateChart}
                   actionLabel="Retry"
                 />
               )}
@@ -587,45 +1199,39 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm text-gray-500">Min</p>
                     <p className="text-xl font-medium">
-                      {formatValue(statistics.min, selectedTransformation)}
+                      {statistics.min.toFixed(2)}
+                      {selectedTransformation === 'mom_pct' || selectedTransformation === 'yoy' ? '%' : ''}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Max</p>
                     <p className="text-xl font-medium">
-                      {formatValue(statistics.max, selectedTransformation)}
+                      {statistics.max.toFixed(2)}
+                      {selectedTransformation === 'mom_pct' || selectedTransformation === 'yoy' ? '%' : ''}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Average</p>
                     <p className="text-xl font-medium">
-                      {formatValue(statistics.mean, selectedTransformation)}
+                      {statistics.mean.toFixed(2)}
+                      {selectedTransformation === 'mom_pct' || selectedTransformation === 'yoy' ? '%' : ''}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Median</p>
                     <p className="text-xl font-medium">
-                      {formatValue(statistics.median, selectedTransformation)}
+                      {statistics.median.toFixed(2)}
+                      {selectedTransformation === 'mom_pct' || selectedTransformation === 'yoy' ? '%' : ''}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Std Dev</p>
                     <p className="text-xl font-medium">
-                      {formatValue(statistics.stdDev, selectedTransformation)}
+                      {statistics.stdDev.toFixed(2)}
+                      {selectedTransformation === 'mom_pct' || selectedTransformation === 'yoy' ? '%' : ''}
                     </p>
                   </div>
                 </div>
-
-                {/* Indicator information */}
-                {indicatorDetails.description && (
-                  <div className="mt-4 border-t border-gray-200 pt-4">
-                    <h4 className="text-sm font-medium text-gray-700 mb-1">About this indicator</h4>
-                    <p className="text-sm text-gray-600">{indicatorDetails.description}</p>
-                    {indicatorDetails.unit && (
-                      <p className="text-sm text-gray-500 mt-1">Unit: {indicatorDetails.unit}</p>
-                    )}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -633,7 +1239,7 @@ const Dashboard = () => {
 
         {/* Watchlist Tab */}
         {selectedTab === 'watchlist' && (
-          <div 
+          <div
             className="bg-white shadow rounded-lg p-6"
             role="tabpanel"
             id="panel-watchlist"
@@ -641,8 +1247,8 @@ const Dashboard = () => {
           >
             <h2 className="text-xl font-semibold mb-4">Your Watchlist</h2>
             {watchlist.length === 0 ? (
-              <EmptyState 
-                message="Your watchlist is empty." 
+              <EmptyState
+                message="Your watchlist is empty."
                 action={() => setSelectedTab('explore')}
                 actionLabel="Go to Explore Tab to Add Indicators"
               />
@@ -665,23 +1271,19 @@ const Dashboard = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {watchlist.map(item => (
-                    <div 
-                      key={item.id} 
+                    <div
+                      key={item.id}
                       className="border rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
-                      aria-label={`Watchlist item: ${item.name}`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <h3 className="text-lg font-medium">{item.name}</h3>
                           <p className="text-sm text-gray-500">
-                            {item.source} ({item.indicator}) - {item.transformationName || "Raw Data"}
+                            {item.transformationName}
                           </p>
                           <p className="text-xs text-gray-400">
                             Added: {new Date(item.dateAdded).toLocaleDateString()}
                           </p>
-                          {item.metadata && item.metadata.unit && (
-                            <p className="text-xs text-gray-400">Unit: {item.metadata.unit}</p>
-                          )}
                         </div>
                         <button
                           onClick={() => removeFromWatchlist(item.id)}
@@ -691,7 +1293,34 @@ const Dashboard = () => {
                           Remove
                         </button>
                       </div>
-                      <WatchlistItemChart item={item} />
+                      <div className="h-48 mt-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={item.data || []}
+                            margin={{ top: 5, right: 20, left: -20, bottom: 5 }}
+                          >
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fontSize: 10 }}
+                              interval="preserveStartEnd"
+                            />
+                            <YAxis
+                              tick={{ fontSize: 10 }}
+                              domain={['auto', 'auto']}
+                            />
+                            <Tooltip />
+                            <Line
+                              type="monotone"
+                              dataKey="value"
+                              stroke="#3B82F6"
+                              dot={false}
+                              strokeWidth={1.5}
+                              name={item.name}
+                              isAnimationActive={false}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -702,106 +1331,141 @@ const Dashboard = () => {
 
         {/* Live Data Tab */}
         {selectedTab === 'live' && (
-          <div 
+          <div
             className="bg-white shadow rounded-lg p-6"
             role="tabpanel"
             id="panel-live"
             aria-labelledby="tab-live"
           >
-            <h2 className="text-xl font-semibold mb-4">Live Data Feed</h2>
-            <div className="mb-6">
-              <div className="flex items-center gap-4 mb-4">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Live Data Feed</h2>
+              <div className="flex items-center gap-4">
                 <p className="text-sm font-medium">
-                  Status: <span className={`font-semibold ${connectionStatus === 'Connected' ? 'text-green-600' : 'text-red-600'}`}>{connectionStatus}</span>
+                  Status: 
+                  <span className={`ml-1 font-semibold ${isLiveConnected ? 'text-green-600' : 'text-yellow-600'}`}>
+                    {isLiveConnected ? 'Connected' : 'Disconnected'}
+                  </span>
                 </p>
-                {connectionStatus !== 'Connected' ? (
-                  <button
-                    onClick={connectWebSocket}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm transition duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    Connect to WebSocket
-                  </button>
-                ) : (
-                  <button
-                    onClick={disconnectWebSocket}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm transition duration-150 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    Disconnect
-                  </button>
-                )}
-              </div>
-              
-              {/* Live data display */}
-              {connectionStatus === 'Connected' && Object.keys(liveData).length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  {Object.entries(liveData)
-                    .filter(([key]) => key !== 'lastUpdated')
-                    .map(([key, data]) => {
-                      if (!data) return null;
-                      const indicator = Object.values(DATA_SOURCES)
-                        .flat()
-                        .find(ind => ind.id === key);
-                      
-                      const name = indicator?.name || key;
-                      const unit = indicator?.unit || '';
-                      
-                      return (
-                        <div key={key} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <div className="flex justify-between mb-2">
-                            <h3 className="font-medium">{name}</h3>
-                            <span 
-                              className={`text-xs px-2 py-1 rounded-full ${
-                                parseFloat(data.change) >= 0 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}
-                            >
-                              {parseFloat(data.change) >= 0 ? '+' : ''}{data.change}
-                            </span>
-                          </div>
-                          <p className="text-2xl font-bold">
-                            {data.value}{unit.includes('Percent') ? '%' : ''}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Refreshes automatically
-                          </p>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-              
-              {connectionStatus === 'Connected' && Object.keys(liveData).length === 0 && (
-                <div className="text-center p-6 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Waiting for data updates...</p>
-                </div>
-              )}
-              
-              {connectionStatus !== 'Connected' && (
-                <div className="text-center p-6 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Connect to WebSocket to receive live updates</p>
-                </div>
-              )}
-              
-              <div className="p-4 bg-gray-50 rounded mt-6">
-                <h3 className="text-lg font-medium mb-2">Fault-Tolerant WebSocket Implementation</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  This implementation demonstrates a production-grade fault-tolerant WebSocket connection with automatic 
-                  reconnection and partial data handling. If any data source fails, the system continues to display 
-                  available data while attempting recovery.
-                </p>
+                <button
+                  onClick={toggleLiveConnection}
+                  className={`px-4 py-2 text-white rounded text-sm transition duration-150 focus:outline-none focus:ring-2 ${
+                    isLiveConnected 
+                      ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' 
+                      : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                  }`}
+                >
+                  {isLiveConnected ? 'Disconnect' : 'Connect to Live Data'}
+                </button>
               </div>
             </div>
+            
+            {isLiveConnected ? (
+              <>
+                {/* Live Data Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {Object.entries(liveValues).map(([indicator, data]) => (
+                    <LiveDataCard 
+                      key={indicator}
+                      indicator={indicator}
+                      value={data.value}
+                      change={data.change}
+                      lastUpdated={data.lastUpdated}
+                    />
+                  ))}
+                </div>
+                
+                {/* Indicator Selection */}
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Select indicators to display:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.keys(LIVE_DATA_CONFIG).map(indicator => (
+                      <button
+                        key={indicator}
+                        onClick={() => {
+                          if (selectedLiveIndicators.includes(indicator)) {
+                            setSelectedLiveIndicators(prev => prev.filter(i => i !== indicator));
+                          } else {
+                            setSelectedLiveIndicators(prev => [...prev, indicator]);
+                          }
+                        }}
+                        className={`px-3 py-1 text-sm rounded-full transition duration-150 ${
+                          selectedLiveIndicators.includes(indicator)
+                            ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                        }`}
+                      >
+                        {INDICATORS[indicator].name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Live Chart */}
+                <div className="h-96 mt-6">
+                  <h3 className="text-lg font-medium mb-4">Real-time Monitoring</h3>
+                  <LiveChart 
+                    data={liveData} 
+                    indicators={selectedLiveIndicators}
+                  />
+                </div>
+                
+                {/* Performance Metrics */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-gray-50 rounded text-center">
+                    <p className="text-sm text-gray-500">Update Frequency</p>
+                    <p className="text-xl font-medium">{(LIVE_UPDATE_INTERVAL / 1000).toFixed(1)}s</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded text-center">
+                    <p className="text-sm text-gray-500">Data Points</p>
+                    <p className="text-xl font-medium">{liveData.length}</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded text-center">
+                    <p className="text-sm text-gray-500">Avg. Update Time</p>
+                    <p className="text-xl font-medium">{performanceMetrics.averageUpdateTime.toFixed(2)}ms</p>
+                  </div>
+                </div>
+                
+                <div className="mt-6 p-4 bg-gray-50 rounded text-sm text-gray-600">
+                  <p className="font-medium">About Live Data Simulation</p>
+                  <p className="mt-2">
+                    This simulates real-time financial data updates with realistic volatility patterns
+                    and inter-indicator correlations. Data points are generated every {LIVE_UPDATE_INTERVAL/1000} seconds
+                    using advanced statistical models with features like:
+                  </p>
+                  <ul className="list-disc ml-6 mt-2 space-y-1">
+                    <li>Mean reversion - values tend to return to baseline over time</li>
+                    <li>Indicator-specific volatility and distribution patterns</li>
+                    <li>Realistic correlations between economic indicators</li>
+                    <li>Appropriate tick sizes for different indicators (e.g., 25bp for Fed Funds)</li>
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <div className="text-center p-12 bg-gray-50 rounded-lg">
+                <div className="mb-4 text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <p className="text-gray-600 mb-6">
+                  Connect to receive institutional-grade simulated real-time updates for key economic indicators.
+                  This dashboard uses advanced stochastic models to generate realistic data patterns with proper
+                  correlations and volatility characteristics.
+                </p>
+                <button
+                  onClick={toggleLiveConnection}
+                  className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  Start Live Connection
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {/* Footer */}
         <footer className="mt-8 text-center text-xs text-gray-500">
-          <p>Financial Data Dashboard v{APP_VERSION} - Enterprise Edition</p>
-          <p className="mt-1">
-            This application demonstrates robust financial data visualization with fault tolerance.
-            Built with industry best practices for maximum reliability.
-          </p>
+          <p>Financial Data Dashboard v{APP_VERSION}</p>
           <p className="mt-1">
             © {new Date().getFullYear()} Your Company - All Rights Reserved
           </p>
