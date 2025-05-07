@@ -1,0 +1,9 @@
+{
+  "name": "financial-dashboard-websocket-handler",
+  "version": "1.0.0",
+  "description": "AWS Lambda function to handle WebSocket connections",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1410.0"
+  }
+}
