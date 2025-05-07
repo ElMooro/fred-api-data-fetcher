@@ -1,0 +1,31 @@
+try {
+  const fs = require('fs');
+  const filePath = '/workspaces/fred-api-data-fetcher/src/components/Dashboard.js';
+  let content = fs.readFileSync(filePath, 'utf8');
+  
+  // Find the LiveChart component and update the tooltip formatter
+  const tooltipFormatterPattern = /formatter=\{?\(value, name\) => \{[^}]*?\}\}?/g;
+  const fixedFormatter = `formatter={(value, name) => {
+            const indicatorInfo = INDICATORS[name] || {};
+            return [\`\${parseFloat(value).toFixed(2)}\${indicatorInfo.unit || ''}\`, (INDICATORS[name] ? INDICATORS[name].name : name)];
+          }}`;
+  
+  // Apply the fix
+  if (tooltipFormatterPattern.test(content)) {
+    content = content.replace(tooltipFormatterPattern, fixedFormatter);
+    fs.writeFileSync(filePath, content);
+    console.log('Fixed LiveChart tooltip formatter');
+  } else {
+    // If we can't find the exact pattern, add a defensive check to all tooltips
+    console.log('Could not find the exact pattern, applying broader fix');
+    
+    // Fix all potential issues with tooltips accessing undefined properties
+    const tooltipContent = content.replace(/INDICATORS\[([^\]]+)\]\.unit/g, 'INDICATORS[$1] ? INDICATORS[$1].unit : ""');
+    const tooltipName = tooltipContent.replace(/INDICATORS\[([^\]]+)\]\.name/g, 'INDICATORS[$1] ? INDICATORS[$1].name : $1');
+    
+    fs.writeFileSync(filePath, tooltipName);
+    console.log('Applied defensive null checks to all tooltip references');
+  }
+} catch (err) {
+  console.error('Error fixing file:', err);
+}

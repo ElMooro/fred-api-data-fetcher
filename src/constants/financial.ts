@@ -1,9 +1,9 @@
-// Export your existing constants
-// This makes them importable from a central location
+import { IndicatorMetadata, WatchlistItem, DataPoint, FinancialCrisis, Transformation, TimeFrame, Indicator, Statistics, LiveDataPoint, LiveData, ConnectionStatus, ErrorType } from '../types';
 
+// Application version
 export const APP_VERSION = '2.0.0';
 
-// Constants and configuration
+// Constants and configuration encapsulated in separate namespace objects
 export const CONFIG = {
   DATES: {
     DEFAULT_START_DATE: '2000-01-01',
@@ -26,7 +26,7 @@ export const CONFIG = {
 };
 
 // Financial Crisis Events
-export const FINANCIAL_CRISES = [
+export const FINANCIAL_CRISES: FinancialCrisis[] = [
   { 
     name: "Black Monday", 
     date: "1987-10-19", 
@@ -68,8 +68,8 @@ export const FINANCIAL_CRISES = [
   }
 ];
 
-// Data sources
-export const DATA_SOURCES = {
+// Data sources structured with proper TypeScript-style documentation
+export const DATA_SOURCES: Record<string, Indicator[]> = {
   FRED: [
     { 
       id: "GDP", 
@@ -151,7 +151,7 @@ export const DATA_SOURCES = {
 };
 
 // Transformations
-export const TRANSFORMATIONS = [
+export const TRANSFORMATIONS: Transformation[] = [
   { 
     id: "raw", 
     name: "Raw Data (No Transformation)", 
@@ -199,7 +199,7 @@ export const TRANSFORMATIONS = [
 ];
 
 // Time frames
-export const TIME_FRAMES = [
+export const TIME_FRAMES: TimeFrame[] = [
   { id: "daily", name: "Daily", days: 1 },
   { id: "weekly", name: "Weekly", days: 7 },
   { id: "monthly", name: "Monthly", days: 30 },
@@ -209,7 +209,7 @@ export const TIME_FRAMES = [
 ];
 
 // Error types - Enables easier error handling and localization
-export const ERROR_TYPES = {
+export const ERROR_TYPES: Record<ErrorType, ErrorType> = {
   INVALID_DATE_RANGE: 'INVALID_DATE_RANGE',
   INVALID_DATE_FORMAT: 'INVALID_DATE_FORMAT',
   NO_DATA_RETURNED: 'NO_DATA_RETURNED',
@@ -221,15 +221,15 @@ export const ERROR_TYPES = {
   DATA_SOURCE_ERROR: 'DATA_SOURCE_ERROR'
 };
 
-// Error messages
-export const ERROR_MESSAGES = {
-  [ERROR_TYPES.INVALID_DATE_RANGE]: "Invalid date range. Please ensure start date is before end date.",
-  [ERROR_TYPES.INVALID_DATE_FORMAT]: "Invalid date format. Please use YYYY-MM-DD format.",
-  [ERROR_TYPES.NO_DATA_RETURNED]: "No data available for the selected parameters.",
-  [ERROR_TYPES.DUPLICATE_WATCHLIST]: "This indicator is already in your watchlist.",
-  [ERROR_TYPES.TRANSFORMATION_ERROR]: "Error applying transformation. Reverting to raw data.",
-  [ERROR_TYPES.NETWORK_ERROR]: "Network connection error. Please try again.",
-  [ERROR_TYPES.API_ERROR]: "API error. Some data sources may be unavailable.",
-  [ERROR_TYPES.GENERAL_ERROR]: "An error occurred. Please try again.",
-  [ERROR_TYPES.DATA_SOURCE_ERROR]: "Error with data source. Some indicators may be unavailable."
+// Error messages - Centralized for easier localization
+export const ERROR_MESSAGES: Record<ErrorType, string> = {
+  INVALID_DATE_RANGE: "Invalid date range. Please ensure start date is before end date.",
+  INVALID_DATE_FORMAT: "Invalid date format. Please use YYYY-MM-DD format.",
+  NO_DATA_RETURNED: "No data available for the selected parameters.",
+  DUPLICATE_WATCHLIST: "This indicator is already in your watchlist.",
+  TRANSFORMATION_ERROR: "Error applying transformation. Reverting to raw data.",
+  NETWORK_ERROR: "Network connection error. Please try again.",
+  API_ERROR: "API error. Some data sources may be unavailable.",
+  GENERAL_ERROR: "An error occurred. Please try again.",
+  DATA_SOURCE_ERROR: "Error with data source. Some indicators may be unavailable."
 };

@@ -1,0 +1,10 @@
+      })
+      .catch(error => {
+        setError(error instanceof AppError ? error.message : ERROR_MESSAGES.GENERAL_ERROR);
+        setIsLoading(false);
+        // Don't clear existing data on error to maintain partial functionality
+      });
+  };, // eslint-disable-line react-hooks/exhaustive-deps
+};, // eslint-disable-line react-hooks/exhaustive-deps
+};, CONFIG.UI.DEBOUNCE_DELAY), [selectedIndicator, getIndicatorDetails, startDate, endDate]);
+

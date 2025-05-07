@@ -1,0 +1,816 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, ReferenceLine, ReferenceArea, Label
+} from 'recharts';
+// // // import * as math from 'mathjs';
+// // // import _ from 'lodash';
+import ErrorMessage from './ErrorMessage';
+import LoadingIndicator from './LoadingIndicator';
+import EmptyState from './EmptyState';
+import WatchlistItemChart from './WatchlistItemChart';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import { CONFIG, ERROR_TYPES, ERROR_MESSAGES, APP_VERSION, AppError } from '../constants';
+import { FINANCIAL_CRISES, DATA_SOURCES, TRANSFORMATIONS, TIME_FRAMES } from '../constants/dataConstants';
+import { DataService } from '../services/DataService';
+import { WebSocketService } from '../services/WebSocketService';
+import { parseDate, validateDateRange, formatValue, debounce } from '../utils';
+import { Logger } from '../utils/Logger';
+
+const Dashboard = () => {
+  // State management
+  const [selectedSource, setSelectedSource] = useState('FRED');
+  const [selectedIndicator, setSelectedIndicator] = useState('UNRATE');
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState('monthly');
+  const [selectedTransformation, setSelectedTransformation] = useState('raw');
+  const [rawData, setRawData] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  const [startDate, setStartDate] = useState(CONFIG.DATES.DEFAULT_START_DATE);
+  const [endDate, setEndDate] = useState(CONFIG.DATES.DEFAULT_END_DATE);
+  const [isLoading, setIsLoading] = useState(false);
+  const [watchlist, setWatchlist] = useLocalStorage('financial-dashboard-watchlist', []);
+  const [selectedTab, setSelectedTab] = useState('explore');
+  const [connectionStatus, setConnectionStatus] = useState('Disconnected');
+  const [error, setError] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [liveData, setLiveData] = useState({});
+  
+  // Get details of the currently selected indicator
+  const getIndicatorDetails = useCallback(() => {
+    const sourceData = DATA_SOURCES[selectedSource] || [];
+    return sourceData.find(item => item.id === selectedIndicator) || {};
+  }, [selectedSource, selectedIndicator]);
+
+  // Get transformation details
+  const getTransformationDetails = useCallback(() => {
+    return TRANSFORMATIONS.find(item => item.id === selectedTransformation) || {};
+  }, [selectedTransformation]);
+
+  // Fetch data with error handling and debouncing for frequent calls
+  const fetchData = useCallback(debounce(() => {
+    setIsLoading(true);
+    setError('');
+    
+    // Validate inputs before making request
+    try {
+      validateDateRange(startDate, endDate);
+    } catch (validationError) {
+      setError(validationError.message);
+      setIsLoading(false);
+      return;
+    }
+    
+    const indicatorDetails = getIndicatorDetails();
+    if (!indicatorDetails) {
+      setError("Invalid indicator selected");
+      setIsLoading(false);
+      return;
+    }
+    
+    // Use the data service to fetch data
+    DataService.fetchData(
+      selectedIndicator,
+      indicatorDetails.frequency || 'monthly',
+      startDate,
+      endDate
+    )
+      .then(data => {
+        setRawData(data);
+        setLastUpdated(new Date());
+        setIsLoading(false);
+      })
+      .catch(error => {
+        setError(error instanceof AppError ? error.message : ERROR_MESSAGES.GENERAL_ERROR);
+        setIsLoading(false);
+        // Don't clear existing data on error to maintain partial functionality
+      });
+  };, // eslint-disable-line react-hooks/exhaustive-deps
+};, // eslint-disable-line react-hooks/exhaustive-deps
+};, CONFIG.UI.DEBOUNCE_DELAY), [selectedIndicator, getIndicatorDetails, startDate, endDate]);
+
+  // Initial data load
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Apply transformations when rawData or selectedTransformation changes
+  useEffect(() => {
+    if (rawData.length === 0) {
+      setChartData([]);
+      return;
+    }
+
+    try {
+      const transformed = DataService.transformData(rawData, selectedTransformation);
+      setChartData(transformed);
+    } catch (error) {
+      Logger.error("Error applying transformation:", error);
+      setError(ERROR_MESSAGES.TRANSFORMATION_ERROR);
+      // Fall back to raw data on error
+      setChartData([...rawData]);
+    }
+  }, [rawData, selectedTransformation]);
+
+  // Add current selection to watchlist
+  const addToWatchlist = useCallback(() => {
+    try {
+      const details = getIndicatorDetails();
+      const transformDetails = getTransformationDetails();
+      
+      if (!details) {
+        throw new AppError(ERROR_TYPES.GENERAL_ERROR, "Invalid indicator selection");
+      }
+      
+      const newItem = {
+        id: `${selectedSource}-${selectedIndicator}-${Date.now()}`,
+        source: selectedSource,
+        indicator: selectedIndicator,
+        name: details.name || selectedIndicator,
+        transformation: selectedTransformation,
+        transformationName: transformDetails.name || "Raw Data",
+        startDate,
+        endDate,
+        frequency: details.frequency || 'monthly',
+        dateAdded: new Date().toISOString(),
+        metadata: {
+          unit: details.unit || '',
+          description: details.description || ''
+        }
+      };
+      
+      setWatchlist(prev => {
+        // Check if already in watchlist
+        const isDuplicate = prev.some(item => 
+          item.source === newItem.source && 
+          item.indicator === newItem.indicator &&
+          item.transformation === newItem.transformation
+        );
+        
+        if (isDuplicate) {
+          setError(ERROR_MESSAGES.DUPLICATE_WATCHLIST);
+          return prev;
+        }
+        
+        return [...prev, newItem];
+      });
+    } catch (error) {
+      setError(error instanceof AppError ? error.message : `Error adding to watchlist: ${error.message}`);
+    }
+  }, [selectedSource, selectedIndicator, selectedTransformation, startDate, endDate, getIndicatorDetails, getTransformationDetails, setWatchlist]);
+
+  // Remove item from watchlist
+  const removeFromWatchlist = useCallback((id) => {
+    setWatchlist(prev => prev.filter(item => item.id !== id));
+  }, [setWatchlist]);
+
+  // Connect to WebSocket for live data
+  useEffect(() => {
+    if (selectedTab === 'live') {
+      const unsubscribeStatus = WebSocketService.onConnectionStatusChange(setConnectionStatus);
+      
+      const unsubscribeMessage = WebSocketService.onMessage(data => {
+        if (data && data.data) {
+          setLiveData(prev => ({
+            ...prev,
+            ...data.data,
+            lastUpdated: data.timestamp
+          }));
+        }
+      });
+      
+      return () => {
+        unsubscribeStatus();
+        unsubscribeMessage();
+      };
+    }
+  }, [selectedTab]);
+
+  // WebSocket connection management
+  const connectWebSocket = useCallback(() => {
+    WebSocketService.connect();
+  }, []);
+
+  const disconnectWebSocket = useCallback(() => {
+    WebSocketService.disconnect();
+  }, []);
+
+  // Memoized calculation of statistics to prevent unnecessary recalculations
+  const statistics = useMemo(() => DataService.calculateStatistics(chartData), [chartData]);
+  
+  // Derived state for unit display
+  const indicatorDetails = useMemo(() => getIndicatorDetails(), [getIndicatorDetails]);
+  const transformationDetails = useMemo(() => getTransformationDetails(), [getTransformationDetails]);
+  
+  const isPercentageDisplay = useMemo(() => {
+    return transformationDetails.resultUnit === 'percent' || 
+           (indicatorDetails.unit && indicatorDetails.unit.toLowerCase().includes('percent'));
+  }, [transformationDetails, indicatorDetails]);
+  
+  // Indicator unit for display
+  const displayUnit = useMemo(() => {
+    if (transformationDetails.resultUnit === 'percent') {
+      return '%';
+    }
+    return indicatorDetails.unit || '';
+  }, [transformationDetails, indicatorDetails]);
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="max-w-6xl mx-auto">
+        <header className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">Financial Data Dashboard</h1>
+          <div className="text-xs text-gray-500">
+            {lastUpdated && (
+              <p>Last updated: {lastUpdated.toLocaleString()}</p>
+            )}
+            <p>v{APP_VERSION}</p>
+          </div>
+        </header>
+
+        {/* Error message display */}
+        <ErrorMessage message={error} onDismiss={() => setError('')} />
+
+        {/* Tabs */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px" role="tablist">
+              <button
+                onClick={() => setSelectedTab('explore')}
+                className={`mr-4 py-2 px-4 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  selectedTab === 'explore'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+                role="tab"
+                aria-selected={selectedTab === 'explore'}
+                aria-controls="panel-explore"
+                id="tab-explore"
+              >
+                Explore Data
+              </button>
+              <button
+                onClick={() => setSelectedTab('watchlist')}
+                className={`mr-4 py-2 px-4 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  selectedTab === 'watchlist'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+                role="tab"
+                aria-selected={selectedTab === 'watchlist'}
+                aria-controls="panel-watchlist"
+                id="tab-watchlist"
+              >
+                Watchlist ({watchlist.length})
+              </button>
+              <button
+                onClick={() => setSelectedTab('live')}
+                className={`py-2 px-4 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  selectedTab === 'live'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+                role="tab"
+                aria-selected={selectedTab === 'live'}
+                aria-controls="panel-live"
+                id="tab-live"
+              >
+                Live Data
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Explore Data Tab */}
+        {selectedTab === 'explore' && (
+          <div 
+            className="bg-white shadow rounded-lg p-6"
+            role="tabpanel"
+            id="panel-explore"
+            aria-labelledby="tab-explore"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              {/* Data Source */}
+              <div>
+                <label 
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                  htmlFor="data-source"
+                >
+                  Data Source
+                </label>
+                <select
+                  id="data-source"
+                  value={selectedSource}
+                  onChange={(e) => {
+                    setSelectedSource(e.target.value);
+                    // Select first indicator from new source
+                    const firstIndicator = DATA_SOURCES[e.target.value]?.[0]?.id || '';
+                    setSelectedIndicator(firstIndicator);
+                  }}
+                  className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  aria-describedby="data-source-help"
+                >
+                  {Object.keys(DATA_SOURCES).map(source => (
+                    <option key={source} value={source}>{source}</option>
+                  ))}
+                </select>
+                <p id="data-source-help" className="text-xs text-gray-400 mt-1">
+                  Select the data provider
+                </p>
+              </div>
+
+              {/* Indicator */}
+              <div>
+                <label 
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                  htmlFor="indicator"
+                >
+                  Indicator
+                </label>
+                <select
+                  id="indicator"
+                  value={selectedIndicator}
+                  onChange={(e) => setSelectedIndicator(e.target.value)}
+                  className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  aria-describedby="indicator-help"
+                >
+                  {(DATA_SOURCES[selectedSource] || []).map(indicator => (
+                    <option key={indicator.id} value={indicator.id}>{indicator.name}</option>
+                  ))}
+                </select>
+                <p id="indicator-help" className="text-xs text-gray-400 mt-1">
+                  {indicatorDetails.description || "Select the economic indicator to display"}
+                </p>
+              </div>
+
+              {/* Time Frame */}
+              <div>
+                <label 
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                  htmlFor="time-frame"
+                >
+                  Time Frame
+                </label>
+                <select
+                  id="time-frame"
+                  value={selectedTimeFrame}
+                  onChange={(e) => setSelectedTimeFrame(e.target.value)}
+                  className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  aria-describedby="time-frame-help"
+                >
+                  {TIME_FRAMES.map(frame => (
+                    <option key={frame.id} value={frame.id}>{frame.name}</option>
+                  ))}
+                </select>
+                <p id="time-frame-help" className="text-xs text-gray-400 mt-1">
+                  {indicatorDetails.frequency 
+                    ? `Native frequency: ${indicatorDetails.frequency}` 
+                    : "Native frequency used for data generation"}
+                </p>
+              </div>
+
+              {/* Transformation */}
+              <div>
+                <label 
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                  htmlFor="transformation"
+                >
+                  Transformation
+                </label>
+                <select
+                  id="transformation"
+                  value={selectedTransformation}
+                  onChange={(e) => setSelectedTransformation(e.target.value)}
+                  className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  aria-describedby="transformation-help"
+                >
+                  {TRANSFORMATIONS.map(transform => (
+                    <option key={transform.id} value={transform.id}>{transform.name}</option>
+                  ))}
+                </select>
+                <p id="transformation-help" className="text-xs text-gray-400 mt-1">
+                  {transformationDetails.description || "Apply mathematical transformation to data"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 mb-6">
+              {/* Date Range */}
+              <div className="flex items-center gap-2">
+                <div>
+                  <label 
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                    htmlFor="start-date"
+                  >
+                    Start Date
+                  </label>
+                  <input
+                    id="start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    max={endDate}
+                  />
+                </div>
+                <div>
+                  <label 
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                    htmlFor="end-date"
+                  >
+                    End Date
+                  </label>
+                  <input
+                    id="end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    min={startDate}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-end gap-2">
+                <button
+                  onClick={() => fetchData()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isLoading}
+                  aria-busy={isLoading}
+                >
+                  {isLoading ? 'Loading...' : 'Update Chart'}
+                </button>
+
+                <button
+                  onClick={addToWatchlist}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  disabled={isLoading}
+                >
+                  Add to Watchlist
+                </button>
+              </div>
+            </div>
+
+            {/* Chart */}
+            <div className="h-96 mb-4" role="region" aria-live="polite">
+              {isLoading ? (
+                <LoadingIndicator message="Loading chart data..." />
+              ) : chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 12 }}
+                      angle={-30}
+                      textAnchor="end"
+                      minTickGap={30}
+                      padding={{ left: 10, right: 10 }}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }} 
+                      domain={['auto', 'auto']} 
+                      tickFormatter={(value) => isPercentageDisplay
+                        ? `${value}%` 
+                        : value.toLocaleString()
+                      }
+                      label={{ 
+                        value: displayUnit, 
+                        angle: -90, 
+                        position: 'insideLeft',
+                        style: { textAnchor: 'middle' }
+                      }}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [
+                        `${parseFloat(value).toFixed(2)}${isPercentageDisplay ? '%' : ''}`,
+                        transformationDetails.name || "Value"
+                      ]}
+                      labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      name={indicatorDetails.name || selectedIndicator}
+                      stroke="#3B82F6"
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 6 }}
+                      isAnimationActive={true}
+                    />
+
+                    {/* Crisis Markers */}
+                    {FINANCIAL_CRISES.map(crisis => {
+                      // Ensure crisis date is within the chart's visible range for ReferenceLine/Area
+                      const crisisStartDate = crisis.date || crisis.startDate;
+                      const crisisEndDate = crisis.date || crisis.endDate;
+                      
+                      if (!crisisStartDate || !parseDate(crisisStartDate) || 
+                          (crisisEndDate && !parseDate(crisisEndDate))) {
+                        return null; // Skip if dates are invalid
+                      }
+                      
+                      if (parseDate(crisisStartDate) > parseDate(endDate) || 
+                          parseDate(crisisEndDate || crisisStartDate) < parseDate(startDate)) {
+                        return null; // Don't render if crisis is outside current date range
+                      }
+
+                      // Different styling based on severity
+                      const severityColor = crisis.severity === "extreme" ? "rgba(220, 38, 38, 0.9)" : 
+                                          crisis.severity === "high" ? "rgba(239, 68, 68, 0.7)" :
+                                          "rgba(251, 113, 133, 0.7)";
+                      
+                      if (crisis.date) {
+                        return (
+                          <ReferenceLine
+                            key={crisis.name}
+                            x={crisis.date}
+                            stroke={severityColor}
+                            strokeDasharray="4 4"
+                            ifOverflow="extendDomain"
+                          >
+                            <Label 
+                              value={crisis.name} 
+                              position="insideTopRight" 
+                              fill={severityColor}
+                              fontSize={10} 
+                              angle={-45} 
+                              dy={-5} 
+                              dx={5}
+                            />
+                          </ReferenceLine>
+                        );
+                      } else if (crisis.startDate && crisis.endDate) {
+                        return (
+                          <ReferenceArea
+                            key={crisis.name}
+                            x1={crisis.startDate}
+                            x2={crisis.endDate}
+                            fill={`${severityColor.replace('0.7', '0.1')}`}
+                            stroke={severityColor}
+                            ifOverflow="extendDomain"
+                          >
+                            <Label 
+                              value={crisis.name} 
+                              position="insideTopRight" 
+                              fill={severityColor}
+                              fontSize={10} 
+                              angle={-45} 
+                              dy={-5} 
+                              dx={5}
+                            />
+                          </ReferenceArea>
+                        );
+                      }
+                      return null;
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState 
+                  message="No data available. Try adjusting your filters or date range." 
+                  action={() => fetchData()}
+                  actionLabel="Retry"
+                />
+              )}
+            </div>
+
+            {/* Statistics */}
+            {!isLoading && chartData.length > 0 && (
+              <div className="bg-gray-50 p-4 rounded">
+                <h3 className="text-lg font-semibold mb-2">
+                  Statistics ({transformationDetails.name || "Raw"} data)
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Min</p>
+                    <p className="text-xl font-medium">
+                      {formatValue(statistics.min, selectedTransformation)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Max</p>
+                    <p className="text-xl font-medium">
+                      {formatValue(statistics.max, selectedTransformation)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Average</p>
+                    <p className="text-xl font-medium">
+                      {formatValue(statistics.mean, selectedTransformation)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Median</p>
+                    <p className="text-xl font-medium">
+                      {formatValue(statistics.median, selectedTransformation)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Std Dev</p>
+                    <p className="text-xl font-medium">
+                      {formatValue(statistics.stdDev, selectedTransformation)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Indicator information */}
+                {indicatorDetails.description && (
+                  <div className="mt-4 border-t border-gray-200 pt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-1">About this indicator</h4>
+                    <p className="text-sm text-gray-600">{indicatorDetails.description}</p>
+                    {indicatorDetails.unit && (
+                      <p className="text-sm text-gray-500 mt-1">Unit: {indicatorDetails.unit}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Watchlist Tab */}
+        {selectedTab === 'watchlist' && (
+          <div 
+            className="bg-white shadow rounded-lg p-6"
+            role="tabpanel"
+            id="panel-watchlist"
+            aria-labelledby="tab-watchlist"
+          >
+            <h2 className="text-xl font-semibold mb-4">Your Watchlist</h2>
+            {watchlist.length === 0 ? (
+              <EmptyState 
+                message="Your watchlist is empty." 
+                action={() => setSelectedTab('explore')}
+                actionLabel="Go to Explore Tab to Add Indicators"
+              />
+            ) : (
+              <>
+                <div className="mb-4 flex justify-between items-center">
+                  <p className="text-sm text-gray-500">
+                    Showing {watchlist.length} {watchlist.length === 1 ? 'item' : 'items'}
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to clear all items from your watchlist?")) {
+                        setWatchlist([]);
+                      }
+                    }}
+                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition duration-150 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {watchlist.map(item => (
+                    <div 
+                      key={item.id} 
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
+                      aria-label={`Watchlist item: ${item.name}`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="text-lg font-medium">{item.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {item.source} ({item.indicator}) - {item.transformationName || "Raw Data"}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            Added: {new Date(item.dateAdded).toLocaleDateString()}
+                          </p>
+                          {item.metadata && item.metadata.unit && (
+                            <p className="text-xs text-gray-400">Unit: {item.metadata.unit}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeFromWatchlist(item.id)}
+                          className="text-red-500 hover:text-red-700 text-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
+                          aria-label={`Remove ${item.name} from watchlist`}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <WatchlistItemChart item={item} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Live Data Tab */}
+        {selectedTab === 'live' && (
+          <div 
+            className="bg-white shadow rounded-lg p-6"
+            role="tabpanel"
+            id="panel-live"
+            aria-labelledby="tab-live"
+          >
+            <h2 className="text-xl font-semibold mb-4">Live Data Feed</h2>
+            <div className="mb-6">
+              <div className="flex items-center gap-4 mb-4">
+                <p className="text-sm font-medium">
+                  Status: <span className={`font-semibold ${connectionStatus === 'Connected' ? 'text-green-600' : 'text-red-600'}`}>{connectionStatus}</span>
+                </p>
+                {connectionStatus !== 'Connected' ? (
+                  <button
+                    onClick={connectWebSocket}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm transition duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    Connect to WebSocket
+                  </button>
+                ) : (
+                  <button
+                    onClick={disconnectWebSocket}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm transition duration-150 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    Disconnect
+                  </button>
+                )}
+              </div>
+              
+              {/* Live data display */}
+              {connectionStatus === 'Connected' && Object.keys(liveData).length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  {Object.entries(liveData)
+                    .filter(([key]) => key !== 'lastUpdated')
+                    .map(([key, data]) => {
+                      if (!data) return null;
+                      const indicator = Object.values(DATA_SOURCES)
+                        .flat()
+                        .find(ind => ind.id === key);
+                      
+                      const name = indicator?.name || key;
+                      const unit = indicator?.unit || '';
+                      
+                      return (
+                        <div key={key} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div className="flex justify-between mb-2">
+                            <h3 className="font-medium">{name}</h3>
+                            <span 
+                              className={`text-xs px-2 py-1 rounded-full ${
+                                parseFloat(data.change) >= 0 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {parseFloat(data.change) >= 0 ? '+' : ''}{data.change}
+                            </span>
+                          </div>
+                          <p className="text-2xl font-bold">
+                            {data.value}{unit.includes('Percent') ? '%' : ''}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Refreshes automatically
+                          </p>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+              
+              {connectionStatus === 'Connected' && Object.keys(liveData).length === 0 && (
+                <div className="text-center p-6 bg-gray-50 rounded-lg">
+                  <p className="text-gray-500">Waiting for data updates...</p>
+                </div>
+              )}
+              
+              {connectionStatus !== 'Connected' && (
+                <div className="text-center p-6 bg-gray-50 rounded-lg">
+                  <p className="text-gray-500">Connect to WebSocket to receive live updates</p>
+                </div>
+              )}
+              
+              <div className="p-4 bg-gray-50 rounded mt-6">
+                <h3 className="text-lg font-medium mb-2">Fault-Tolerant WebSocket Implementation</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  This implementation demonstrates a production-grade fault-tolerant WebSocket connection with automatic 
+                  reconnection and partial data handling. If any data source fails, the system continues to display 
+                  available data while attempting recovery.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <footer className="mt-8 text-center text-xs text-gray-500">
+          <p>Financial Data Dashboard v{APP_VERSION} - Enterprise Edition</p>
+          <p className="mt-1">
+            This application demonstrates robust financial data visualization with fault tolerance.
+            Built with industry best practices for maximum reliability.
+          </p>
+          <p className="mt-1">
+            © {new Date().getFullYear()} Your Company - All Rights Reserved
+          </p>
+        </footer>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;

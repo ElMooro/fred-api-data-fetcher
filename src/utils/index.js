@@ -1,6 +1,67 @@
-import { CONFIG } from '../constants';
-import { Logger } from './Logger';
-import { AppError, ERROR_TYPES } from '../constants';
+/**
+ * Utility functions for date manipulation and error handling
+ */
+
+// Error types for better error handling and localization
+export const ERROR_TYPES = {
+  INVALID_DATE_RANGE: 'INVALID_DATE_RANGE',
+  INVALID_DATE_FORMAT: 'INVALID_DATE_FORMAT',
+  NO_DATA_RETURNED: 'NO_DATA_RETURNED',
+  DUPLICATE_WATCHLIST: 'DUPLICATE_WATCHLIST',
+  TRANSFORMATION_ERROR: 'TRANSFORMATION_ERROR',
+  NETWORK_ERROR: 'NETWORK_ERROR',
+  API_ERROR: 'API_ERROR',
+  GENERAL_ERROR: 'GENERAL_ERROR',
+  DATA_SOURCE_ERROR: 'DATA_SOURCE_ERROR'
+};
+
+// Error messages - centralized for easier localization
+export const ERROR_MESSAGES = {
+  [ERROR_TYPES.INVALID_DATE_RANGE]: "Invalid date range. Please ensure start date is before end date.",
+  [ERROR_TYPES.INVALID_DATE_FORMAT]: "Invalid date format. Please use YYYY-MM-DD format.",
+  [ERROR_TYPES.NO_DATA_RETURNED]: "No data available for the selected parameters.",
+  [ERROR_TYPES.DUPLICATE_WATCHLIST]: "This indicator is already in your watchlist.",
+  [ERROR_TYPES.TRANSFORMATION_ERROR]: "Error applying transformation. Reverting to raw data.",
+  [ERROR_TYPES.NETWORK_ERROR]: "Network connection error. Please try again.",
+  [ERROR_TYPES.API_ERROR]: "API error. Some data sources may be unavailable.",
+  [ERROR_TYPES.GENERAL_ERROR]: "An error occurred. Please try again.",
+  [ERROR_TYPES.DATA_SOURCE_ERROR]: "Error with data source. Some indicators may be unavailable."
+};
+
+/**
+ * Custom error class with type for better error handling
+ */
+export class AppError extends Error {
+  constructor(type, message, originalError = null) {
+    super(message || ERROR_MESSAGES[type] || 'Unknown error');
+    this.name = 'AppError';
+    this.type = type;
+    this.originalError = originalError;
+  }
+}
+
+/**
+ * Logger utility with multiple log levels
+ */
+export const Logger = {
+  debug: (message, data) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug(message, data);
+    }
+  },
+  
+  info: (message, data) => {
+    console.info(message, data);
+  },
+  
+  warn: (message, data) => {
+    console.warn(message, data);
+  },
+  
+  error: (message, error, extraData) => {
+    console.error(message, error, extraData);
+  }
+};
 
 /**
  * Safely parse a date string and validate it
@@ -16,7 +77,7 @@ export const parseDate = (dateString) => {
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? null : date;
   } catch (error) {
-    Logger.error("Date parsing error:", error, { dateString });
+    Logger.error("Date parsing error:", error);
     return null;
   }
 };
@@ -40,40 +101,6 @@ export const validateDateRange = (startDateStr, endDateStr) => {
   }
   
   return { startDate, endDate };
-};
-
-/**
- * Safely get month difference between two dates
- * @param {Date} date1 - First date
- * @param {Date} date2 - Second date
- * @returns {number} Number of months between dates
- */
-export const getMonthDifference = (date1, date2) => {
-  if (!date1 || !date2) return 0;
-  return (date2.getFullYear() - date1.getFullYear()) * 12 + date2.getMonth() - date1.getMonth();
-};
-
-/**
- * Safely get quarter difference between two dates
- * @param {Date} date1 - First date
- * @param {Date} date2 - Second date
- * @returns {number} Number of quarters between dates
- */
-export const getQuarterDifference = (date1, date2) => {
-  if (!date1 || !date2) return 0;
-  const getQuarter = (date) => Math.floor(date.getMonth() / 3);
-  return (date2.getFullYear() - date1.getFullYear()) * 4 + getQuarter(date2) - getQuarter(date1);
-};
-
-/**
- * Safely get year difference between two dates
- * @param {Date} date1 - First date
- * @param {Date} date2 - Second date
- * @returns {number} Number of years between dates
- */
-export const getYearDifference = (date1, date2) => {
-  if (!date1 || !date2) return 0;
-  return date2.getFullYear() - date1.getFullYear();
 };
 
 /**
@@ -127,60 +154,11 @@ export const formatValue = (value, transformationType, precision = 2) => {
 };
 
 /**
- * Create a retry wrapper for async functions with exponential backoff
- * @param {Function} fn - Async function to retry
- * @param {Object} options - Retry options
- * @param {number} options.maxAttempts - Maximum number of attempts
- * @param {number} options.backoffFactor - Multiplier for delay between attempts
- * @param {number} options.initialDelay - Initial delay in ms
- * @returns {Function} Function with retry capability
- */
-export const withRetry = (fn, options = {}) => {
-  const {
-    maxAttempts = CONFIG.RETRY.MAX_ATTEMPTS,
-    backoffFactor = CONFIG.RETRY.BACKOFF_FACTOR,
-    initialDelay = CONFIG.RETRY.INITIAL_DELAY
-  } = options;
-  
-  return async (...args) => {
-    let lastError;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await fn(...args);
-      } catch (error) {
-        lastError = error;
-        
-        // Don't retry if it's a validation error or we've reached max attempts
-        if (error instanceof AppError || attempt === maxAttempts) {
-          throw error;
-        }
-        
-        // Log retry attempt
-        Logger.warn(`Retry attempt ${attempt}/${maxAttempts}`, { 
-          function: fn.name, 
-          error: error.message 
-        });
-        
-        // Wait before next attempt with exponential backoff
-        const delay = initialDelay * Math.pow(backoffFactor, attempt - 1);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-    
-    // This should never execute due to the throw in the loop, but as a fallback
-    throw lastError;
-  };
-};
-
-/**
  * Debounce function to prevent excessive function calls
- * @param {Function} func - Function to debounce
- * @param {number} wait - Wait time in milliseconds
- * @returns {Function} Debounced function
  */
-export const debounce = (func, wait = CONFIG.UI.DEBOUNCE_DELAY) => {
+export const debounce = (func, wait = 300) => {
   let timeout;
-  return function executedFunction(...args) {
+  return function(...args) {
     const later = () => {
       clearTimeout(timeout);
       func(...args);

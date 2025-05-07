@@ -1,34 +1,42 @@
 /**
- * DataService.js
- * Handles data fetching, caching, and transformation for financial indicators
+ * DataService.js - Financial dashboard data service
+ * Handles API communication with fallback to mock data generation
  */
 
-import { ERROR_TYPES, AppError } from '../utils/AppError';
-import { Logger } from '../utils/Logger';
-import { DATA_SOURCES } from '../constants/dataSources';
-import { validateDateRange } from '../utils/dateUtils';
-import { withRetry } from '../utils/withRetry';
+// Import any necessary utilities
+import { ERROR_TYPES, ERROR_MESSAGES } from '../constants/errors';
+
+// API endpoint configuration
+const API_CONFIG = {
+  BASE_URL: 'https://i3y8tfdp1k.execute-api.us-east-1.amazonaws.com/prod',
+  ENDPOINTS: {
+    INDICATORS: '/indicators'
+  },
+  TIMEOUT: 8000
+};
 
 /**
- * Data Service for financial indicators
- * Implements a hybrid approach with API calls and fallback to mock data
+ * DataService singleton for data operations
  */
 const DataService = (() => {
-  // In-memory cache for data
+  // In-memory cache
   const cache = new Map();
   
   /**
-   * Generate a cache key for data requests
+   * Generate cache key for requests
    */
-  const getCacheKey = (seriesId, frequency, startDate, endDate) => {
-    return `${seriesId}|${frequency}|${startDate}|${endDate}`;
+  const getCacheKey = (seriesId, frequency, startDate, endDate, transformation = 'raw') => {
+    return `${seriesId}|${frequency}|${startDate}|${endDate}|${transformation}`;
   };
-
+  
   /**
-   * Find indicator details across all sources
+   * Find indicator details in data sources
    */
   const findIndicatorDetails = (seriesId) => {
     if (!seriesId) return null;
+    
+    // Data sources should be imported from your constants
+    const DATA_SOURCES = window.DATA_SOURCES || {};
     
     let indicatorDetails = null;
     Object.values(DATA_SOURCES).some(sourceData => {
@@ -42,41 +50,33 @@ const DataService = (() => {
     
     return indicatorDetails;
   };
-
+  
   /**
-   * Primary data fetching function that tries the API first,
-   * then falls back to mock data generation if needed
+   * Main data fetching function that calls API with fallback to mock data
    */
   const fetchData = async (seriesId, frequency, startDate, endDate) => {
     try {
-      // Input validation
-      if (!seriesId) {
-        throw new AppError(ERROR_TYPES.GENERAL_ERROR, "Missing series ID parameter");
-      }
-      
-      // Validate date range
-      validateDateRange(startDate, endDate);
+      console.log(`Fetching data for ${seriesId} from ${startDate} to ${endDate}`);
       
       // Check cache first
       const cacheKey = getCacheKey(seriesId, frequency, startDate, endDate);
       if (cache.has(cacheKey)) {
-        Logger.debug("Cache hit", { cacheKey });
+        console.log("Using cached data");
         return cache.get(cacheKey);
       }
       
-      // Try fetching from API first
+      // Make API request
       try {
-        Logger.info("Fetching from API Gateway", { seriesId, startDate, endDate });
+        console.log("Attempting API call...");
+        const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.INDICATORS}?indicator=${seriesId}&startDate=${startDate}&endDate=${endDate}`;
         
-        // Build the API URL with query parameters
-        const apiUrl = `https://i3y8tfdp1k.execute-api.us-east-1.amazonaws.com/prod/indicators?indicator=${seriesId}&startDate=${startDate}&endDate=${endDate}`;
-        
-        // Make the API request with timeout
+        // Set up fetch with timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
         
-        const response = await fetch(apiUrl, {
+        const response = await fetch(url, {
           method: 'GET',
+          mode: 'cors',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
@@ -86,89 +86,110 @@ const DataService = (() => {
         
         clearTimeout(timeoutId);
         
-        // Check if the request was successful
+        // Check response status
         if (!response.ok) {
-          throw new Error(`HTTP error: ${response.status}`);
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
         
-        // Parse the JSON response
+        // Parse JSON response
         const result = await response.json();
+        console.log("API response:", result);
         
-        // Validate the response data
-        if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
-          throw new Error("No data returned from API");
+        // Validate response data
+        if (!result.data || !Array.isArray(result.data)) {
+          throw new Error("Invalid data format received from API");
         }
         
-        // Store in cache
+        // Store in cache and return
         cache.set(cacheKey, result.data);
-        Logger.info("Successfully fetched from API", { dataPoints: result.data.length });
-        
         return result.data;
       } catch (apiError) {
-        // Log API error and fall back to mock data
-        Logger.warn("API request failed, falling back to mock data", { 
-          error: apiError.message, 
-          seriesId, 
-          startDate, 
-          endDate 
-        });
+        console.warn("API request failed:", apiError);
+        console.log("Falling back to mock data generation...");
         
-        // Generate mock data as fallback
-        const mockData = await generateMockData(seriesId, frequency, startDate, endDate);
-        return mockData;
+        // Fall back to mock data generation
+        return await generateMockData(seriesId, frequency, startDate, endDate);
       }
     } catch (error) {
-      // Convert to AppError if it's not already
-      if (!(error instanceof AppError)) {
-        error = new AppError(
-          ERROR_TYPES.DATA_SOURCE_ERROR,
-          `Error fetching data for ${seriesId}`,
-          error
-        );
-      }
-      
-      Logger.error("Data fetching error", error, {
-        seriesId,
-        frequency,
-        startDate,
-        endDate
-      });
-      
+      console.error("Data fetching error:", error);
       throw error;
     }
   };
-
+  
   /**
-   * Generates mock financial data with realistic patterns as a fallback
-   * [Keep your original generateMockData implementation here]
+   * Generate mock financial data as fallback
    */
   const generateMockData = async (seriesId, frequency, startDate, endDate) => {
-    // Your existing mock data generator code
-    // This provides fallback data if the API isn't available
+    // Your existing mock data generation logic
+    // This function should be a copy of your current implementation
+    console.log("Generating mock data");
+    
+    // Simplified implementation for brevity
+    const data = [];
+    let currentDate = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    
+    // Base value depends on indicator
+    let baseValue = 100;
+    if (seriesId === "UNRATE") baseValue = 5;
+    if (seriesId === "GDP") baseValue = 15000;
+    if (seriesId === "FEDFUNDS") baseValue = 2.5;
+    
+    // Generate data points
+    while (currentDate <= endDateObj) {
+      // Add random variation (simplified)
+      const randomFactor = (Math.random() * 0.1) - 0.05;
+      baseValue = baseValue * (1 + randomFactor);
+      
+      data.push({
+        date: currentDate.toISOString().split('T')[0],
+        value: parseFloat(baseValue.toFixed(2))
+      });
+      
+      // Move to next period
+      if (frequency === 'daily') {
+        currentDate.setDate(currentDate.getDate() + 1);
+      } else if (frequency === 'weekly') {
+        currentDate.setDate(currentDate.getDate() + 7);
+      } else if (frequency === 'monthly') {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      } else if (frequency === 'quarterly') {
+        currentDate.setMonth(currentDate.getMonth() + 3);
+      } else {
+        // Default to monthly
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    }
+    
+    return data;
   };
-
+  
   /**
-   * Transform data based on selected transformation type
-   * [Keep your original transformData implementation here]
+   * Transform data based on transformation type
    */
   const transformData = (data, transformationType) => {
-    // Your existing transformData implementation
+    // Your existing data transformation logic
+    return data;
   };
-
+  
   /**
-   * Calculate statistics for a dataset
-   * [Keep your original calculateStatistics implementation here]
+   * Calculate statistics for dataset
    */
   const calculateStatistics = (data) => {
-    // Your existing calculateStatistics implementation
+    // Your existing statistics calculation logic
+    return {
+      min: 0,
+      max: 0,
+      mean: 0,
+      median: 0,
+      stdDev: 0,
+      count: 0
+    };
   };
-
-  // Wrap data fetching with retry capability
-  const fetchDataWithRetry = withRetry(fetchData);
-
-  // Expose public API
+  
+  // Public API
   return {
-    fetchData: fetchDataWithRetry,
+    fetchData,
     transformData,
     calculateStatistics,
     findIndicatorDetails

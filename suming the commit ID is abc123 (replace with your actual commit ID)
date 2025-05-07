@@ -1,0 +1,31 @@
+[33mbf44d6a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add secrets ignore file and update version to avoid false positive detection
+[33mde3122a[m Implement institutional-grade live data dashboard with real-time simulation
+[33m5167868[m Restructure project following React best practices with proper separation of concerns
+[33m5e0ecb0[m Initialize project with proper structure following React best practices
+[33m68b937e[m Integrate AWS API Gateway and fix GitHub Pages deployment
+[33me64d2fa[m Update DataService to use API Gateway instead of local mock data
+[33m4366d66[m Add Financial Dashboard application with WebSocket simulation
+[33m00b618d[m Update index.html to display FRED data in table format
+[33m9dbcd25[m Update index.html to display FRED data in table format
+[33m8b6e4b0[m Update index.html to display FRED data in table format
+[33mb040bf8[m Update index.html to display FRED data in table format
+[33m0cd8639[m Update index.html to display FRED data in table format
+[33mab30bfd[m Update index.html to display FRED data in table format
+[33m5f9c695[m Update index.html to display FRED data in table format
+[33mc1c26d7[m Update index.html to display FRED data in table format
+[33m16a0956[m Update index.html to display FRED data in table format
+[33maaf7532[m Update index.html to display FRED data in table format
+[33ma7bf299[m Update index.html to display FRED data in table format
+[33m31d3655[m Update index.html to display FRED data in table format
+[33m1ddf806[m Update index.html to display FRED data in table format
+[33mdbf5c43[m Update index.html to display FRED data in table format
+[33m924a94a[m Update index.html to display FRED data in table format
+[33mde9bb65[m Update index.html to display FRED data in table format
+[33m9c71fb0[m Update index.html to display FRED data in table format
+[33m03780a8[m Update index.html to display FRED data in table format
+[33m3fe6fe4[m Update index.html to display FRED data in table format
+[33m9b44949[m Update index.html to render FRED data
+[33mf85020f[m Update index.html with FRED API key
+[33m88d6ea4[m Add index.html for FRED API Data Fetcher
+[33m575ec21[m Add FRED API Data Fetcher website
+[33m056d949[m Initial commit

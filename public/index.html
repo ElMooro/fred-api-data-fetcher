@@ -1,20 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Financial Data Dashboard - Enterprise Edition"
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>Financial Data Dashboard</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta
+    name="description"
+    content="Financial Data Dashboard - FRED API Data Fetcher"
+  />
+  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  <title>Financial Data Dashboard</title>
+  <script>
+    // Debug logger for API diagnostics
+    window.apiLogger = {
+      logs: [],
+      log: function(message, data) {
+        console.log(`[API] ${message}`, data);
+        this.logs.push({
+          timestamp: new Date().toISOString(),
+          message,
+          data
+        });
+      },
+      error: function(message, error) {
+        console.error(`[API ERROR] ${message}`, error);
+        this.logs.push({
+          timestamp: new Date().toISOString(),
+          type: 'error',
+          message,
+          error: error?.toString()
+        });
+      },
+      getDebugInfo: function() {
+        return JSON.stringify(this.logs, null, 2);
+      }
+    };
+  </script>
+</head>
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root"></div>
+</body>
 </html>
