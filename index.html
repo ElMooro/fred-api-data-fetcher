@@ -3,319 +3,1531 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chart.js Dashboard</title>
+    <title>Advanced Interactive Financial Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.2.1/chartjs-plugin-annotation.min.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        :root {
+            --primary: #3a7bd5;
+            --secondary: #00d2ff;
+            --dark: #2c3e50;
+            --light: #f5f7fa;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --text: #333;
+            --border: #ddd;
+        }
+        
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            background-color: #f5f7fa;
-            color: #333;
         }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
+        
         header {
-            background-color: #4361ee;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             padding: 20px 0;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
         }
-        h1 {
-            margin: 0;
-            font-size: 2em;
+        
+        h1, h2, h3 {
+            font-weight: 600;
         }
-        .chart-container {
+        
+        header h1 {
+            font-size: 2.2em;
+            margin: 0;
+            text-align: center;
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .dashboard-title {
+            font-size: 1.8em;
+            margin: 0;
+            color: var(--dark);
+        }
+        
+        .control-panel {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
             display: flex;
             flex-wrap: wrap;
-            justify-content: space-between;
-            margin-bottom: 30px;
-        }
-        .chart-box {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
-            padding: 20px;
-            width: calc(50% - 20px);
-        }
-        @media (max-width: 768px) {
-            .chart-box {
-                width: 100%;
-            }
-        }
-        .chart-title {
-            font-size: 1.2em;
-            margin-top: 0;
+            gap: 15px;
             margin-bottom: 15px;
-            color: #4361ee;
-            text-align: center;
         }
-        .controls {
-            text-align: center;
-            margin-bottom: 30px;
+        
+        .control-item {
+            flex: 1;
+            min-width: 200px;
         }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
         button {
-            background-color: #4361ee;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             border: none;
             padding: 10px 20px;
-            margin: 0 5px;
-            border-radius: 4px;
+            border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            font-weight: 500;
+            transition: all 0.3s ease;
         }
+        
         button:hover {
-            background-color: #3a56d4;
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(650px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-box {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            position: relative;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            margin: 0;
+            color: var(--dark);
+        }
+        
+        .chart-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chart-action-btn {
+            background-color: transparent;
+            color: var(--dark);
+            border: 1px solid var(--border);
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .chart-action-btn:hover {
+            background-color: var(--light);
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 350px;
+        }
+        
+        .metrics-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .metric-box {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .metric-title {
+            font-size: 1em;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+        
+        .metric-value {
+            font-size: 2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .metric-change {
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .positive {
+            color: var(--success);
+        }
+        
+        .negative {
+            color: var(--danger);
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .data-table th {
+            background-color: var(--light);
+            font-weight: 600;
+        }
+        
+        .data-table tr:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        
+        .legend-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 300px;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
         footer {
             text-align: center;
-            margin-top: 30px;
             padding: 20px 0;
             color: #666;
             font-size: 0.9em;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            .chart-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-item {
+                min-width: 100%;
+            }
+        }
+        
+        /* Custom styles for the time period buttons */
+        .time-period-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .time-button {
+            background-color: white;
+            color: var(--dark);
+            border: 1px solid var(--border);
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .time-button.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-color: transparent;
+        }
+        
+        /* Indicator toggle switches */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: var(--primary);
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        
+        .tab-container {
+            margin-bottom: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px 0;
+        }
+        
+        .tab-content.active {
+            display: block;
         }
     </style>
 </head>
 <body>
     <header>
         <div class="container">
-            <h1>Interactive Chart Dashboard</h1>
+            <h1>Advanced Interactive Financial Dashboard</h1>
         </div>
     </header>
 
     <div class="container">
-        <div class="controls">
-            <button id="randomizeData">Randomize Data</button>
-            <button id="addDataset">Add Dataset</button>
-            <button id="removeDataset">Remove Dataset</button>
+        <div class="dashboard-header">
+            <h2 class="dashboard-title">Performance Analytics</h2>
+            <div class="time-period-buttons">
+                <button class="time-button" data-period="1D">1D</button>
+                <button class="time-button" data-period="1W">1W</button>
+                <button class="time-button" data-period="1M">1M</button>
+                <button class="time-button active" data-period="3M">3M</button>
+                <button class="time-button" data-period="6M">6M</button>
+                <button class="time-button" data-period="1Y">1Y</button>
+                <button class="time-button" data-period="ALL">ALL</button>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="tab-container">
+                <div class="tabs">
+                    <div class="tab active" data-tab="settings">Settings</div>
+                    <div class="tab" data-tab="indicators">Indicators</div>
+                    <div class="tab" data-tab="appearance">Appearance</div>
+                    <div class="tab" data-tab="data">Data</div>
+                </div>
+                
+                <div class="tab-content active" data-tab-content="settings">
+                    <div class="control-group">
+                        <div class="control-item">
+                            <label for="data-type">Data Type</label>
+                            <select id="data-type">
+                                <option value="revenue">Revenue</option>
+                                <option value="profit">Profit</option>
+                                <option value="orders">Orders</option>
+                                <option value="customers">Customers</option>
+                            </select>
+                        </div>
+                        <div class="control-item">
+                            <label for="comparison-type">Comparison</label>
+                            <select id="comparison-type">
+                                <option value="yoy">Year over Year (YoY)</option>
+                                <option value="mom">Month over Month (MoM)</option>
+                                <option value="qoq">Quarter over Quarter (QoQ)</option>
+                                <option value="wow">Week over Week (WoW)</option>
+                            </select>
+                        </div>
+                        <div class="control-item">
+                            <label for="chart-type">Chart Type</label>
+                            <select id="chart-type">
+                                <option value="line">Line</option>
+                                <option value="bar">Bar</option>
+                                <option value="area">Area</option>
+                                <option value="candlestick">Candlestick</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-item">
+                            <label for="date-range">Custom Date Range</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="date" id="date-start" style="flex: 1;">
+                                <input type="date" id="date-end" style="flex: 1;">
+                            </div>
+                        </div>
+                        <div class="control-item">
+                            <label for="aggregation">Aggregation</label>
+                            <select id="aggregation">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
+                        <div class="control-item">
+                            <label>&nbsp;</label>
+                            <button id="apply-settings">Apply Settings</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" data-tab-content="indicators">
+                    <div class="control-group">
+                        <div class="control-item">
+                            <h3>Technical Indicators</h3>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-ma">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Moving Average (MA)</span>
+                                <select id="ma-period" style="width: 80px; margin-left: 10px;">
+                                    <option value="7">7</option>
+                                    <option value="14">14</option>
+                                    <option value="30" selected>30</option>
+                                    <option value="60">60</option>
+                                    <option value="90">90</option>
+                                </select>
+                            </div>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-ema">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Exponential Moving Average (EMA)</span>
+                                <select id="ema-period" style="width: 80px; margin-left: 10px;">
+                                    <option value="7">7</option>
+                                    <option value="14">14</option>
+                                    <option value="30" selected>30</option>
+                                    <option value="60">60</option>
+                                    <option value="90">90</option>
+                                </select>
+                            </div>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-bollinger">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Bollinger Bands</span>
+                            </div>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-trend">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Trend Line</span>
+                            </div>
+                        </div>
+                        <div class="control-item">
+                            <h3>Performance Metrics</h3>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-yoy" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Year over Year (YoY) %</span>
+                            </div>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-mom" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Month over Month (MoM) %</span>
+                            </div>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-qoq">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Quarter over Quarter (QoQ) %</span>
+                            </div>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-wow">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Week over Week (WoW) %</span>
+                            </div>
+                        </div>
+                        <div class="control-item">
+                            <h3>Thresholds</h3>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-threshold">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Target Line</span>
+                                <input type="number" id="threshold-value" style="width: 100px; margin-left: 10px;" value="1000">
+                            </div>
+                            <div class="toggle-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-benchmark">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Benchmark Line</span>
+                                <select id="benchmark-type" style="width: 120px; margin-left: 10px;">
+                                    <option value="industry">Industry Avg</option>
+                                    <option value="previous">Previous Year</option>
+                                    <option value="budget">Budget</option>
+                                </select>
+                            </div>
+                            <button id="apply-indicators" style="margin-top: 20px;">Apply Indicators</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" data-tab-content="appearance">
+                    <div class="control-group">
+                        <div class="control-item">
+                            <label for="primary-color">Primary Color</label>
+                            <input type="color" id="primary-color" value="#3a7bd5">
+                        </div>
+                        <div class="control-item">
+                            <label for="secondary-color">Secondary Color</label>
+                            <input type="color" id="secondary-color" value="#00d2ff">
+                        </div>
+                        <div class="control-item">
+                            <label for="theme">Theme</label>
+                            <select id="theme">
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                                <option value="pastel">Pastel</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-item">
+                            <label for="animation-speed">Animation Speed</label>
+                            <input type="range" id="animation-speed" min="0" max="2000" step="100" value="1000">
+                        </div>
+                        <div class="control-item">
+                            <label for="grid-lines">Grid Lines</label>
+                            <select id="grid-lines">
+                                <option value="both">Both</option>
+                                <option value="x">X-Axis Only</option>
+                                <option value="y">Y-Axis Only</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+                        <div class="control-item">
+                            <label>&nbsp;</label>
+                            <button id="apply-appearance">Apply Appearance</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" data-tab-content="data">
+                    <div class="control-group">
+                        <div class="control-item">
+                            <label for="data-source">Data Source</label>
+                            <select id="data-source">
+                                <option value="demo">Demo Data</option>
+                                <option value="upload">Upload CSV</option>
+                                <option value="api">Connect API</option>
+                            </select>
+                        </div>
+                        <div class="control-item">
+                            <label for="csv-upload">Upload CSV (if applicable)</label>
+                            <input type="file" id="csv-upload" accept=".csv">
+                        </div>
+                        <div class="control-item">
+                            <label for="api-endpoint">API Endpoint (if applicable)</label>
+                            <input type="text" id="api-endpoint" placeholder="https://api.example.com/data">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-item">
+                            <label for="refresh-interval">Auto Refresh Interval</label>
+                            <select id="refresh-interval">
+                                <option value="0">No Auto Refresh</option>
+                                <option value="30">30 seconds</option>
+                                <option value="60">1 minute</option>
+                                <option value="300">5 minutes</option>
+                                <option value="3600">1 hour</option>
+                            </select>
+                        </div>
+                        <div class="control-item">
+                            <label>&nbsp;</label>
+                            <button id="refresh-data">Refresh Data Now</button>
+                        </div>
+                        <div class="control-item">
+                            <label>&nbsp;</label>
+                            <button id="export-data">Export Data</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="metrics-container">
+            <div class="metric-box">
+                <span class="metric-title">Current Revenue</span>
+                <span class="metric-value">$1,245,678</span>
+                <span class="metric-change positive">+12.5% YoY</span>
+                <span class="metric-change positive">+3.2% MoM</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-title">Current Profit</span>
+                <span class="metric-value">$347,812</span>
+                <span class="metric-change positive">+8.7% YoY</span>
+                <span class="metric-change negative">-1.4% MoM</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-title">Orders</span>
+                <span class="metric-value">12,458</span>
+                <span class="metric-change positive">+15.2% YoY</span>
+                <span class="metric-change positive">+4.8% MoM</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-title">Customers</span>
+                <span class="metric-value">8,745</span>
+                <span class="metric-change positive">+18.3% YoY</span>
+                <span class="metric-change positive">+2.1% MoM</span>
+            </div>
         </div>
 
         <div class="chart-container">
             <div class="chart-box">
-                <h2 class="chart-title">Monthly Revenue</h2>
-                <canvas id="barChart"></canvas>
+                <div class="chart-header">
+                    <h3 class="chart-title">Revenue Trends with YoY & MoM Comparison</h3>
+                    <div class="chart-actions">
+                        <button class="chart-action-btn" id="download-chart-1">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export
+                        </button>
+                        <button class="chart-action-btn" id="fullscreen-chart-1">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                            Fullscreen
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div class="legend-container">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(58, 123, 213, 0.8);"></div>
+                        <span>Current Year</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(0, 210, 255, 0.4);"></div>
+                        <span>Previous Year</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(46, 204, 113, 0.8);"></div>
+                        <span>YoY Change %</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(231, 76, 60, 0.8);"></div>
+                        <span>MoM Change %</span>
+                    </div>
+                </div>
             </div>
+            
             <div class="chart-box">
-                <h2 class="chart-title">User Growth</h2>
-                <canvas id="lineChart"></canvas>
+                <div class="chart-header">
+                    <h3 class="chart-title">Profit Analysis with Indicators</h3>
+                    <div class="chart-actions">
+                        <button class="chart-action-btn" id="download-chart-2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export
+                        </button>
+                        <button class="chart-action-btn" id="fullscreen-chart-2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                            Fullscreen
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="profitChart"></canvas>
+                </div>
+                <div class="legend-container">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(58, 123, 213, 0.8);"></div>
+                        <span>Profit</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(243, 156, 18, 0.8);"></div>
+                        <span>Moving Average (30d)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(231, 76, 60, 0.8);"></div>
+                        <span>Target</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(46, 204, 113, 0.8);"></div>
+                        <span>Trend Line</span>
+                    </div>
+                </div>
             </div>
+            
             <div class="chart-box">
-                <h2 class="chart-title">Traffic Sources</h2>
-                <canvas id="pieChart"></canvas>
+                <div class="chart-header">
+                    <h3 class="chart-title">Orders & Customer Growth</h3>
+                    <div class="chart-actions">
+                        <button class="chart-action-btn" id="download-chart-3">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export
+                        </button>
+                        <button class="chart-action-btn" id="fullscreen-chart-3">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                            Fullscreen
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="ordersChart"></canvas>
+                </div>
+                <div class="legend-container">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(58, 123, 213, 0.8);"></div>
+                        <span>Orders</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(0, 210, 255, 0.8);"></div>
+                        <span>Customers</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(46, 204, 113, 0.8);"></div>
+                        <span>Orders Growth %</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(243, 156, 18, 0.8);"></div>
+                        <span>Customer Growth %</span>
+                    </div>
+                </div>
             </div>
+            
             <div class="chart-box">
-                <h2 class="chart-title">Weekly Performance</h2>
-                <canvas id="radarChart"></canvas>
+                <div class="chart-header">
+                    <h3 class="chart-title">Performance by Time Period</h3>
+                    <div class="chart-actions">
+                        <button class="chart-action-btn" id="download-chart-4">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export
+                        </button>
+                        <button class="chart-action-btn" id="fullscreen-chart-4">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                            Fullscreen
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="timeComparisonChart"></canvas>
+                </div>
+                <div class="legend-container">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(58, 123, 213, 0.8);"></div>
+                        <span>Revenue</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(0, 210, 255, 0.8);"></div>
+                        <span>Profit</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(243, 156, 18, 0.8);"></div>
+                        <span>Orders</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: rgba(46, 204, 113, 0.8);"></div>
+                        <span>Customers</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-box">
+            <div class="chart-header">
+                <h3 class="chart-title">Detailed Data Table</h3>
+                <div class="chart-actions">
+                    <button class="chart-action-btn" id="download-table">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Export Table
+                    </button>
+                </div>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="data-table" id="detailedTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Revenue</th>
+                            <th>YoY %</th>
+                            <th>MoM %</th>
+                            <th>Profit</th>
+                            <th>YoY %</th>
+                            <th>MoM %</th>
+                            <th>Orders</th>
+                            <th>YoY %</th>
+                            <th>Customers</th>
+                            <th>YoY %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data will be populated dynamically -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <footer>
         <div class="container">
-            <p>Created with Chart.js | Data for demonstration purposes only</p>
+            <p>Advanced Interactive Financial Dashboard | Created with Chart.js</p>
+            <p>Data is for demonstration purposes only</p>
         </div>
     </footer>
 
     <script>
-        // Helper function to generate random data
-        function getRandomData(min, max, count) {
-            return Array.from({ length: count }, () => 
-                Math.floor(Math.random() * (max - min + 1)) + min
-            );
-        }
-
-        // Helper function to generate random colors
-        function getRandomColor() {
-            const r = Math.floor(Math.random() * 255);
-            const g = Math.floor(Math.random() * 255);
-            const b = Math.floor(Math.random() * 255);
-            return `rgba(${r}, ${g}, ${b}, 0.7)`;
-        }
-
-        // Labels for all charts
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-
-        // BAR CHART - Monthly Revenue
-        const barCtx = document.getElementById('barChart').getContext('2d');
-        const barChart = new Chart(barCtx, {
-            type: 'bar',
-            data: {
-                labels: months,
-                datasets: [{
-                    label: '2024 Revenue ($K)',
-                    data: getRandomData(30, 100, 6),
-                    backgroundColor: 'rgba(67, 97, 238, 0.7)',
-                    borderColor: 'rgba(67, 97, 238, 1)',
-                    borderWidth: 1
-                }]
+        // Global configurations and data
+        const config = {
+            animationSpeed: 1000,
+            colors: {
+                primary: '#3a7bd5',
+                secondary: '#00d2ff',
+                success: '#2ecc71',
+                warning: '#f39c12',
+                danger: '#e74c3c'
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // LINE CHART - User Growth
-        const lineCtx = document.getElementById('lineChart').getContext('2d');
-        const lineChart = new Chart(lineCtx, {
-            type: 'line',
-            data: {
-                labels: months,
-                datasets: [{
-                    label: 'New Users',
-                    data: getRandomData(500, 3000, 6),
-                    fill: false,
-                    borderColor: 'rgba(76, 201, 240, 1)',
-                    tension: 0.1
-                }]
+            timeFormat: 'MM/DD/YYYY',
+            currentPeriod: '3M',
+            indicators: {
+                ma: false,
+                ema: false,
+                bollinger: false,
+                trend: false,
+                threshold: false,
+                benchmark: false
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                }
+            settings: {
+                dataType: 'revenue',
+                comparison: 'yoy',
+                chartType: 'line',
+                aggregation: 'monthly'
             }
+        };
+
+        // Generate sample dates for the last 3 years
+        const today = new Date();
+        const dates = Array.from({ length: 36 }, (_, i) => {
+            const date = new Date(today);
+            date.setMonth(date.getMonth() - 35 + i);
+            return date;
         });
 
-        // PIE CHART - Traffic Sources
-        const pieCtx = document.getElementById('pieChart').getContext('2d');
-        const pieChart = new Chart(pieCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Organic Search', 'Direct', 'Social Media', 'Referral', 'Email'],
-                datasets: [{
-                    data: getRandomData(10, 40, 5),
-                    backgroundColor: [
-                        'rgba(67, 97, 238, 0.7)',
-                        'rgba(76, 201, 240, 0.7)',
-                        'rgba(87, 204, 153, 0.7)',
-                        'rgba(255, 107, 107, 0.7)',
-                        'rgba(255, 209, 102, 0.7)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                    }
-                }
-            }
-        });
-
-        // RADAR CHART - Weekly Performance
-        const radarCtx = document.getElementById('radarChart').getContext('2d');
-        const radarChart = new Chart(radarCtx, {
-            type: 'radar',
-            data: {
-                labels: ['Speed', 'Reliability', 'User Satisfaction', 'Features', 'Support', 'Security'],
-                datasets: [{
-                    label: 'Current Week',
-                    data: getRandomData(60, 100, 6),
-                    fill: true,
-                    backgroundColor: 'rgba(67, 97, 238, 0.2)',
-                    borderColor: 'rgba(67, 97, 238, 1)',
-                    pointBackgroundColor: 'rgba(67, 97, 238, 1)',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: 'rgba(67, 97, 238, 1)'
-                }]
-            },
-            options: {
-                elements: {
-                    line: {
-                        borderWidth: 2
-                    }
-                },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    }
-                }
-            }
-        });
-
-        // Button event listeners for interactivity
-        document.getElementById('randomizeData').addEventListener('click', () => {
-            // Update each chart with new random data
-            barChart.data.datasets.forEach(dataset => {
-                dataset.data = getRandomData(30, 100, 6);
-            });
-            barChart.update();
-
-            lineChart.data.datasets.forEach(dataset => {
-                dataset.data = getRandomData(500, 3000, 6);
-            });
-            lineChart.update();
-
-            pieChart.data.datasets.forEach(dataset => {
-                dataset.data = getRandomData(10, 40, 5);
-            });
-            pieChart.update();
-
-            radarChart.data.datasets.forEach(dataset => {
-                dataset.data = getRandomData(60, 100, 6);
-            });
-            radarChart.update();
-        });
-
-        document.getElementById('addDataset').addEventListener('click', () => {
-            // Add a new dataset to the bar and line charts
-            const newColor = getRandomColor();
+        // Generate sample data
+        function generateMonthlyData() {
+            // Let's create data with seasonal patterns and year-over-year growth
+            const baseRevenue = 800000;
+            const baseProfitMargin = 0.28;
+            const baseOrders = 10000;
+            const baseCustomers = 7000;
             
-            // Add to bar chart
-            barChart.data.datasets.push({
-                label: `Dataset ${barChart.data.datasets.length + 1}`,
-                data: getRandomData(30, 100, 6),
-                backgroundColor: newColor,
-                borderColor: newColor,
-                borderWidth: 1
+            // Create realistic data with seasonal trends and YoY growth
+            const data = dates.map((date, index) => {
+                const month = date.getMonth();
+                const year = date.getFullYear();
+                
+                // Seasonal factors (higher in Q4, lower in Q1)
+                const seasonalFactor = [0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.0, 0.95, 1.1, 1.2, 1.3, 1.1][month];
+                
+                // Year progression factor (about 10% YoY growth)
+                const yearFactor = 1 + (Math.floor(index / 12) * 0.1);
+                
+                // Add some randomness
+                const randomFactor = 0.9 + (Math.random() * 0.2);
+                
+                const revenue = baseRevenue * seasonalFactor * yearFactor * randomFactor;
+                
+                // Profit margin varies slightly with volume
+                const adjustedProfitMargin = baseProfitMargin * (0.9 + (revenue / (baseRevenue * 3) * 0.2));
+                const profit = revenue * adjustedProfitMargin;
+                
+                // Orders and customers follow similar patterns but not exactly the same
+                const orders = baseOrders * seasonalFactor * yearFactor * (0.9 + (Math.random() * 0.2));
+                const customers = baseCustomers * seasonalFactor * yearFactor * (0.9 + (Math.random() * 0.2));
+                
+                return {
+                    date: date,
+                    revenue: Math.round(revenue),
+                    profit: Math.round(profit),
+                    orders: Math.round(orders),
+                    customers: Math.round(customers)
+                };
             });
-            barChart.update();
+            
+            return data;
+        }
 
-            // Add to line chart
-            const lineColor = getRandomColor();
-            lineChart.data.datasets.push({
-                label: `Dataset ${lineChart.data.datasets.length + 1}`,
-                data: getRandomData(500, 3000, 6),
-                fill: false,
-                borderColor: lineColor,
-                tension: 0.1
+        const monthlyData = generateMonthlyData();
+
+        // Calculate YoY and MoM percentages
+        function calculateChanges(data) {
+            return data.map((item, index) => {
+                const currentDate = item.date;
+                
+                // For YoY comparison
+                const yoyIndex = data.findIndex(d => 
+                    d.date.getMonth() === currentDate.getMonth() && 
+                    d.date.getFullYear() === currentDate.getFullYear() - 1
+                );
+                
+                // For MoM comparison
+                let previousMonthDate = new Date(currentDate);
+                previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
+                const momIndex = data.findIndex(d => 
+                    d.date.getMonth() === previousMonthDate.getMonth() && 
+                    d.date.getFullYear() === previousMonthDate.getFullYear()
+                );
+                
+                const changes = {
+                    ...item,
+                    revenueYoY: yoyIndex >= 0 ? ((item.revenue / data[yoyIndex].revenue) - 1) * 100 : null,
+                    revenueMoM: momIndex >= 0 ? ((item.revenue / data[momIndex].revenue) - 1) * 100 : null,
+                    profitYoY: yoyIndex >= 0 ? ((item.profit / data[yoyIndex].profit) - 1) * 100 : null,
+                    profitMoM: momIndex >= 0 ? ((item.profit / data[momIndex].profit) - 1) * 100 : null,
+                    ordersYoY: yoyIndex >= 0 ? ((item.orders / data[yoyIndex].orders) - 1) * 100 : null,
+                    ordersMoM: momIndex >= 0 ? ((item.orders / data[momIndex].orders) - 1) * 100 : null,
+                    customersYoY: yoyIndex >= 0 ? ((item.customers / data[yoyIndex].customers) - 1) * 100 : null,
+                    customersMoM: momIndex >= 0 ? ((item.customers / data[momIndex].customers) - 1) * 100 : null
+                };
+                
+                return changes;
             });
-            lineChart.update();
+        }
+
+        const enrichedData = calculateChanges(monthlyData);
+
+        // Initialize charts
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up charts
+            initializeRevenueChart();
+            initializeProfitChart();
+            initializeOrdersChart();
+            initializeTimeComparisonChart();
+            
+            // Populate data table
+            populateDataTable();
+            
+            // Set up event listeners
+            setupEventListeners();
         });
 
-        document.getElementById('removeDataset').addEventListener('click', () => {
-            // Remove the last dataset from bar and line charts
-            if (barChart.data.datasets.length > 1) {
-                barChart.data.datasets.pop();
-                barChart.update();
-            }
+        function setupEventListeners() {
+            // Tab navigation
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs and tab contents
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding content
+                    tab.classList.add('active');
+                    document.querySelector(`.tab-content[data-tab-content="${tabId}"]`).classList.add('active');
+                });
+            });
+            
+            // Time period buttons
+            document.querySelectorAll('.time-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    // Remove active class from all time buttons
+                    document.querySelectorAll('.time-button').forEach(b => b.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    button.classList.add('active');
+                    
+                    // Update current period
+                    config.currentPeriod = button.getAttribute('data-period');
+                    
+                    // Update all charts
+                    updateAllCharts();
+                });
+            });
+            
+            // Apply settings button
+            document.getElementById('apply-settings').addEventListener('click', () => {
+                // Get values from settings form
+                config.settings.dataType = document.getElementById('data-type').value;
+                config.settings.comparison = document.getElementById('comparison-type').value;
+                config.settings.chartType = document.getElementById('chart-type').value;
+                config.settings.aggregation = document.getElementById('aggregation').value;
+                
+                // Update all charts
+                updateAllCharts();
+            });
+            
+            // Apply indicators button
+            document.getElementById('apply-indicators').addEventListener('click', () => {
+                // Update indicator settings
+                config.indicators.ma = document.getElementById('toggle-ma').checked;
+                config.indicators.ema = document.getElementById('toggle-ema').checked;
+                config.indicators.bollinger = document.getElementById('toggle-bollinger').checked;
+                config.indicators.trend = document.getElementById('toggle-trend').checked;
+                config.indicators.threshold = document.getElementById('toggle-threshold').checked;
+                config.indicators.benchmark = document.getElementById('toggle-benchmark').checked;
+                
+                // Update charts that use indicators
+                updateAllCharts();
+            });
+            
+            // Apply appearance button
+            document.getElementById('apply-appearance').addEventListener('click', () => {
+                // Update appearance settings
+                config.colors.primary = document.getElementById('primary-color').value;
+                config.colors.secondary = document.getElementById('secondary-color').value;
+                config.animationSpeed = parseInt(document.getElementById('animation-speed').value);
+                
+                // Update all charts
+                updateAllCharts();
+            });
+            
+            // Refresh data button
+            document.getElementById('refresh-data').addEventListener('click', () => {
+                // In a real application, this would fetch new data
+                // For demo, we'll just regenerate random data
+                const newData = generateMonthlyData();
+                const newEnrichedData = calculateChanges(newData);
+                
+                // Replace data
+                enrichedData.length = 0;
+                enrichedData.push(...newEnrichedData);
+                
+                // Update all visuals
+                updateAllCharts();
+                populateDataTable();
+                updateMetricsBoxes();
+            });
+            
+            // Export data button
+            document.getElementById('export-data').addEventListener('click', () => {
+                // Convert data to CSV
+                let csv = 'Date,Revenue,Revenue YoY %,Revenue MoM %,Profit,Profit YoY %,Profit MoM %,Orders,Orders YoY %,Customers,Customers YoY %\n';
+                
+                enrichedData.forEach(item => {
+                    const date = item.date.toLocaleDateString();
+                    const row = [
+                        date,
+                        item.revenue,
+                        item.revenueYoY !== null ? item.revenueYoY.toFixed(2) : '',
+                        item.revenueMoM !== null ? item.revenueMoM.toFixed(2) : '',
+                        item.profit,
+                        item.profitYoY !== null ? item.profitYoY.toFixed(2) : '',
+                        item.profitMoM !== null ? item.profitMoM.toFixed(2) : '',
+                        item.orders,
+                        item.ordersYoY !== null ? item.ordersYoY.toFixed(2) : '',
+                        item.customers,
+                        item.customersYoY !== null ? item.customersYoY.toFixed(2) : ''
+                    ].join(',');
+                    
+                    csv += row + '\n';
+                });
+                
+                // Create download link
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.setAttribute('hidden', '');
+                a.setAttribute('href', url);
+                a.setAttribute('download', 'financial_data.csv');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+            
+            // Chart download buttons
+            document.querySelectorAll('[id^="download-chart-"]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const chartId = button.id.replace('download-chart-', '');
+                    const chartCanvas = document.getElementById(getChartCanvasId(chartId));
+                    
+                    if (chartCanvas) {
+                        const url = chartCanvas.toDataURL('image/png');
+                        const a = document.createElement('a');
+                        a.setAttribute('hidden', '');
+                        a.setAttribute('href', url);
+                        a.setAttribute('download', `chart-${chartId}.png`);
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }
+                });
+            });
+            
+            // Download table button
+            document.getElementById('download-table').addEventListener('click', () => {
+                document.getElementById('export-data').click();
+            });
+            
+            // Indicator toggles
+            document.querySelectorAll('[id^="toggle-"]').forEach(toggle => {
+                toggle.addEventListener('change', () => {
+                    const indicator = toggle.id.replace('toggle-', '');
+                    config.indicators[indicator] = toggle.checked;
+                });
+            });
+        }
 
-            if (lineChart.data.datasets.length > 1) {
-                lineChart.data.datasets.pop();
-                lineChart.update();
-            }
-        });
-    </script>
-</body>
-</html>
+        function getChartCanvasId(chartNumber) {
+            const chartIds = {
+                '1': 'revenueChart',
+                '2': 'profitChart',
+                '3': 'ordersChart',
+                '4': 'timeComparisonChart'
+            };
+            
+            return chartIds[chartNumber] || '';
+        }
+
+        function initializeRevenueChart() {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            
+            // Filter data based on current period
+            const filteredData = filterDataByPeriod(enrichedData, config.currentPeriod);
+            
+            // Prepare data for chart
+            const labels = filteredData.map(item => item.date);
+            const currentYearData = filteredData.map(item => item.revenue);
+            
+            // Find previous year data
+            const previousYearData = filteredData.map(item => {
+                const previousYearDate = new Date(item.date);
+                previousYearDate.setFullYear(previousYearDate.getFullYear() - 1);
+                
+                const previousYearItem = enrichedData.find(d => 
+                    d.date.getMonth() === previousYearDate.getMonth() && 
+                    d.date.getFullYear() === previousYearDate.getFullYear()
+                );
+                
+                return previousYearItem ? previousYearItem.revenue : null;
+            });
+            
+            // YoY and MoM percentage changes
+            const yoyPercentages = filteredData.map(item => item.revenueYoY);
+            const momPercentages = filteredData.map(item => item.revenueMoM);
+            
+            // Create chart with multiple y-axes
+            window.revenueChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Current Year',
+                            data: currentYearData,
+                            borderColor: config.colors.primary,
+                            backgroundColor: `${config.colors.primary}20`,
+                            borderWidth: 2,
+                            fill: true,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'Previous Year',
+                            data: previousYearData,
+                            borderColor: config.colors.secondary,
+                            backgroundColor: `${config.colors.secondary}10`,
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            fill: true,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'YoY % Change',
+                            data: yoyPercentages,
+                            borderColor: config.colors.success,
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            pointBackgroundColor: config.colors.success,
+                            yAxisID: 'percentage',
+                        },
+                        {
+                            label: 'MoM % Change',
+                            data: momPercentages,
+                            borderColor: config.colors.danger,
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            pointBackgroundColor: config.colors.danger,
+                            yAxisID: 'percentage',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: config.animationSpeed
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'month',
+                                displayFormats: {
+                                    month: 'MMM YY'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Revenue ($)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    if (value >= 1000000) {
+                                        return '$' + (value / 1000000).toFixed(1) + 'M';
+                                    } else if (value >= 1000) {
+                                        return '$' + (value / 1000).toFixed(1) + 'K';
+                                    }
+                                    return '$' + value;
+                                }
+                            }
+                        },
+                        percentage: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Percentage Change (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.yAxisID === 'percentage') {
+                                        return label + context.raw.toFixed(2) + '%';
+                                    } else {
+                                        return label + '$' + context.raw.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeProfitChart() {
+            const ctx = document.getElementById('profitChart').getContext('2d');
+            
+            // Filter data based on current period
+            const filteredData = filterDataByPeriod(enrichedData, config.currentPeriod);
+            
+            // Prepare data for chart
+            const labels = filteredData.map(item => item.date);
+            const profitData = filteredData.map(item => item.profit);
+            
+            // Calculate moving average (30-day)
+            const movingAverageData = calculateMovingAverage(profitData, 3);
+            
+            // Calculate trend line
+            const trendLineData = calculateTrendLine(profitData);
+            
+            // Create chart
+            window.profitChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Profit',
+                            data: profitData,
+                            borderColor: config.colors.primary,
+                            backgroundColor: `${config.colors.primary}20`,
+                            borderWidth: 2,
+                            fill: true,
+                        },
+                        {
+                            label: 'Moving Average (30d)',
+                            data: movingAverageData,
+                            borderColor: config.colors.warning,
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0,
+                        },
+                        {
+                            label: 'Trend Line',
+                            data: trendLineData,
+                            borderColor: config.colors.success,
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [10, 5],
+                            fill: false,
+                            pointRadius: 0,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: config.animationSpeed
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'month',
+                                displayFormats: {
+                                    month: 'MMM YY'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Profit ($)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    if (value >= 1000000) {
+                                        return '$' + (value / 1000000).toFixed(1) + 'M';
+                                    } else if (value >= 1000) {
+                                        return '$' + (value / 1000).toFixed(1) + 'K';
+                                    }
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    return label + '$' + context.raw.toLocaleString();
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                targetLine: {
+                                    type: 'line',
+                                    yMin: 350000,
+                                    yMax: 350000,
+                                    borderColor: config.colors.danger,
+                                    borderWidth: 2,
+                                    borderDash: [6, 6],
+                                    label: {
+                                        content: 'Target',
+                                        display: true,
+                                        position: 'end',
+                                        backgroundColor: config.colors.danger,
+                                        color: 'white',
+                                        font: {
+                                            weight: 'bold'
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeOrdersChart() {
+            const ctx = document.getElementById('orders
