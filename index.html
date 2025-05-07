@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ReferenceLine, ReferenceArea, Label
 } from 'recharts';
 import * as math from 'mathjs';
-// import _ from 'lodash'; // Removed: Unused import
+import _ from 'lodash'; // Re-added for data transformation functions
 
-// Financial Crisis Events
+// Financial Crisis Events with consistent date format
 const FINANCIAL_CRISES = [
   { name: "Black Monday", date: "1987-10-19", description: "Stock market crash where Dow Jones fell by 22.6%" },
   { name: "Dot-com Bubble", startDate: "2000-03-10", endDate: "2002-10-09", description: "Tech stock bubble burst" },
@@ -16,7 +16,7 @@ const FINANCIAL_CRISES = [
   { name: "COVID-19 Crash", date: "2020-03-16", description: "Pandemic-induced market crash" }
 ];
 
-// Data sources
+// Data sources with consistent structure
 const DATA_SOURCES = {
   FRED: [
     { id: "GDP", name: "Gross Domestic Product", frequency: "quarterly" },
@@ -35,60 +35,191 @@ const DATA_SOURCES = {
   ]
 };
 
-// Transformations
+// Transformations with descriptions
 const TRANSFORMATIONS = [
-  { id: "raw", name: "Raw Data (No Transformation)" },
-  { id: "mom", name: "Month-over-Month Change" },
-  { id: "mom_pct", name: "Month-over-Month % Change" },
-  { id: "qoq", name: "Quarter-over-Quarter Change" },
-  { id: "qoq_pct", name: "Quarter-over-Quarter % Change" },
-  { id: "yoy", name: "Year-over-Year % Change" } // Commonly Year-over-Year % Change
+  { id: "raw", name: "Raw Data (No Transformation)", description: "Original data without any mathematical transformation" },
+  { id: "mom", name: "Month-over-Month Change", description: "Absolute change from previous month" },
+  { id: "mom_pct", name: "Month-over-Month % Change", description: "Percentage change from previous month" },
+  { id: "qoq", name: "Quarter-over-Quarter Change", description: "Absolute change from previous quarter" },
+  { id: "qoq_pct", name: "Quarter-over-Quarter % Change", description: "Percentage change from previous quarter" },
+  { id: "yoy", name: "Year-over-Year % Change", description: "Percentage change from same period previous year" }
 ];
 
-// Time frames
+// Time frames with associated day increments for calculations
 const TIME_FRAMES = [
-  { id: "daily", name: "Daily" },
-  { id: "weekly", name: "Weekly" },
-  { id: "monthly", name: "Monthly" },
-  { id: "quarterly", name: "Quarterly" },
-  { id: "semiannual", name: "Half-Yearly" },
-  { id: "annual", name: "Yearly" }
+  { id: "daily", name: "Daily", days: 1 },
+  { id: "weekly", name: "Weekly", days: 7 },
+  { id: "monthly", name: "Monthly", days: 30 },
+  { id: "quarterly", name: "Quarterly", days: 90 },
+  { id: "semiannual", name: "Half-Yearly", days: 180 },
+  { id: "annual", name: "Yearly", days: 365 }
 ];
 
-// Mock data generator
+/**
+ * Generates mock financial data with consistent pattern
+ * @param {string} seriesId - Identifier for the data series
+ * @param {string} frequency - Data frequency (daily, weekly, monthly, etc.)
+ * @param {string} startDate - Start date in ISO format
+ * @param {string} endDate - End date in ISO format
+ * @returns {Array} Array of data points with date and value properties
+ */
 const generateMockData = (seriesId, frequency, startDate, endDate) => {
-  const data = [];
-  let currentDate = new Date(startDate);
-  const end = new Date(endDate);
-
-  let value = 100; // Base value
-
-  while (currentDate <= end) {
-    value = value * (1 + (Math.random() * 0.06 - 0.03)); // Add some randomness
-
-    data.push({
-      date: currentDate.toISOString().split('T')[0],
-      value: parseFloat(value.toFixed(2))
-    });
-
-    // Move to next period
-    if (frequency === 'daily') {
-      currentDate.setDate(currentDate.getDate() + 1);
-    } else if (frequency === 'weekly') {
-      currentDate.setDate(currentDate.getDate() + 7);
-    } else if (frequency === 'monthly') {
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    } else if (frequency === 'quarterly') {
-      currentDate.setMonth(currentDate.getMonth() + 3);
-    } else if (frequency === 'semiannual') {
-      currentDate.setMonth(currentDate.getMonth() + 6);
-    } else if (frequency === 'annual') {
-      currentDate.setFullYear(currentDate.getFullYear() + 1);
-    } else { // Default to monthly if frequency is unknown, or handle error
-        currentDate.setMonth(currentDate.getMonth() + 1);
-    }
+  if (!startDate || !endDate) {
+    console.error("Invalid date range provided");
+    return [];
   }
-  return data;
+
+  const data = [];
+  let currentDate;
+  
+  try {
+    currentDate = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (isNaN(currentDate.getTime()) || isNaN(end.getTime())) {
+      throw new Error("Invalid date format");
+    }
+    
+    if (currentDate > end) {
+      throw new Error("Start date must be before end date");
+    }
+    
+    // Base value varies by indicator type for more realistic data
+    let value = 100;
+    if (seriesId === "UNRATE") value = 5;  // Unemployment rate starts around 5%
+    if (seriesId === "FEDFUNDS") value = 2.5;  // Federal funds rate starts around 2.5%
+    if (seriesId === "GDP") value = 15000;  // GDP in billions
+    
+    // Volatility varies by indicator
+    const volatilityFactor = seriesId === "FSI" ? 0.08 : 0.03;
+
+    while (currentDate <= end) {
+      // Add some randomness with trend component based on series ID
+      let trend = 0;
+      
+      // Different series have different trends
+      if (seriesId === "UNRATE") {
+        trend = Math.sin(data.length / 20) * 0.02; // Cyclical unemployment
+      } else if (seriesId === "GDP") {
+        trend = 0.005; // Growing economy
+      }
+      
+      value = value * (1 + (Math.random() * volatilityFactor * 2 - volatilityFactor) + trend);
+
+      data.push({
+        date: currentDate.toISOString().split('T')[0],
+        value: parseFloat(value.toFixed(2))
+      });
+
+      // Move to next period based on frequency
+      if (frequency === 'daily') {
+        currentDate.setDate(currentDate.getDate() + 1);
+      } else if (frequency === 'weekly') {
+        currentDate.setDate(currentDate.getDate() + 7);
+      } else if (frequency === 'monthly') {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      } else if (frequency === 'quarterly') {
+        currentDate.setMonth(currentDate.getMonth() + 3);
+      } else if (frequency === 'semiannual') {
+        currentDate.setMonth(currentDate.getMonth() + 6);
+      } else if (frequency === 'annual') {
+        currentDate.setFullYear(currentDate.getFullYear() + 1);
+      } else {
+        // Default to monthly if frequency is unknown
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    }
+    
+    return data;
+  } catch (error) {
+    console.error("Error generating mock data:", error.message);
+    return [];
+  }
+};
+
+/**
+ * Transform data based on selected transformation type
+ * @param {Array} data - Array of data points with date and value properties
+ * @param {string} transformationType - Type of transformation to apply
+ * @returns {Array} Transformed data
+ */
+const transformData = (data, transformationType) => {
+  if (!data || data.length === 0 || transformationType === 'raw') {
+    return [...data]; // Return a copy of the original data for raw type
+  }
+
+  try {
+    const result = [...data]; // Create a copy to avoid mutating the original
+    
+    // Sort data by date to ensure correct transformation
+    result.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    switch (transformationType) {
+      case 'mom': // Month-over-Month absolute change
+        return result.map((item, index) => {
+          if (index === 0) return { ...item, value: 0 };
+          
+          const currentDate = new Date(item.date);
+          const prevDate = new Date(result[index - 1].date);
+          
+          // Check if it's a different month
+          const isNewMonth = currentDate.getMonth() !== prevDate.getMonth() || 
+                             currentDate.getFullYear() !== prevDate.getFullYear();
+          
+          return {
+            ...item,
+            value: isNewMonth ? parseFloat((item.value - result[index - 1].value).toFixed(2)) : item.value
+          };
+        });
+        
+      case 'mom_pct': // Month-over-Month percentage change
+        return result.map((item, index) => {
+          if (index === 0) return { ...item, value: 0 };
+          
+          const currentDate = new Date(item.date);
+          const prevDate = new Date(result[index - 1].date);
+          
+          // Check if it's a different month
+          const isNewMonth = currentDate.getMonth() !== prevDate.getMonth() || 
+                             currentDate.getFullYear() !== prevDate.getFullYear();
+          
+          return {
+            ...item,
+            value: isNewMonth && result[index - 1].value !== 0 
+              ? parseFloat(((item.value - result[index - 1].value) / result[index - 1].value * 100).toFixed(2))
+              : item.value
+          };
+        });
+        
+      case 'yoy': // Year-over-Year percentage change
+        return result.map((item, index) => {
+          const currentDate = new Date(item.date);
+          
+          // Find data point from one year ago (approximately)
+          const yearAgoIndex = result.findIndex(d => {
+            const date = new Date(d.date);
+            return date.getMonth() === currentDate.getMonth() && 
+                   date.getFullYear() === currentDate.getFullYear() - 1;
+          });
+          
+          if (yearAgoIndex === -1) return { ...item, value: 0 };
+          
+          return {
+            ...item,
+            value: result[yearAgoIndex].value !== 0 
+              ? parseFloat(((item.value - result[yearAgoIndex].value) / result[yearAgoIndex].value * 100).toFixed(2))
+              : 0
+          };
+        });
+        
+      default:
+        console.warn(`Transformation type '${transformationType}' not fully implemented, returning raw data`);
+        return result;
+    }
+  } catch (error) {
+    console.error("Error transforming data:", error.message);
+    return [...data]; // Return original data in case of error
+  }
 };
 
 // Dashboard component
@@ -96,143 +227,312 @@ const Dashboard = () => {
   // State
   const [selectedSource, setSelectedSource] = useState('FRED');
   const [selectedIndicator, setSelectedIndicator] = useState('UNRATE');
-  const [selectedTimeFrame, setSelectedTimeFrame] = useState('monthly'); // Note: This state is selected but not used to resample data
+  const [selectedTimeFrame, setSelectedTimeFrame] = useState('monthly');
   const [selectedTransformation, setSelectedTransformation] = useState('raw');
-  const [rawData, setRawData] = useState([]); // Store raw data
-  const [chartData, setChartData] = useState([]); // Data to be displayed (potentially transformed)
+  const [rawData, setRawData] = useState([]);
+  const [chartData, setChartData] = useState([]);
   const [startDate, setStartDate] = useState('2000-01-01');
   const [endDate, setEndDate] = useState('2025-04-30');
   const [isLoading, setIsLoading] = useState(false);
   const [watchlist, setWatchlist] = useState([]);
   const [selectedTab, setSelectedTab] = useState('explore');
   const [connectionStatus, setConnectionStatus] = useState('Disconnected');
+  const [error, setError] = useState('');
 
+  // Get details of the currently selected indicator
   const getIndicatorDetails = useCallback(() => {
     const sourceData = DATA_SOURCES[selectedSource] || [];
     return sourceData.find(item => item.id === selectedIndicator) || {};
   }, [selectedSource, selectedIndicator]);
 
+  // Get transformation details
+  const getTransformationDetails = useCallback(() => {
+    return TRANSFORMATIONS.find(item => item.id === selectedTransformation) || {};
+  }, [selectedTransformation]);
+
+  // Fetch data with error handling
   const fetchData = useCallback(() => {
     setIsLoading(true);
-    const indicatorDetails = getIndicatorDetails();
+    setError('');
+    
+    try {
+      const indicatorDetails = getIndicatorDetails();
+      
+      if (!indicatorDetails) {
+        throw new Error("Invalid indicator selected");
+      }
+      
+      // Validate date inputs
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new Error("Invalid date format");
+      }
+      
+      if (start > end) {
+        throw new Error("Start date must be before end date");
+      }
 
-    // Simulate API delay
-    setTimeout(() => {
-      const data = generateMockData(
-        selectedIndicator,
-        indicatorDetails.frequency || 'monthly', // Use indicator's native frequency
-        startDate,
-        endDate
-      );
-      setRawData(data); // Store the fetched raw data
-      // At this point, chartData will be updated by the transformation useEffect
+      // Simulate API delay
+      setTimeout(() => {
+        try {
+          const data = generateMockData(
+            selectedIndicator,
+            indicatorDetails.frequency || 'monthly',
+            startDate,
+            endDate
+          );
+          
+          if (!data || data.length === 0) {
+            throw new Error("No data returned");
+          }
+          
+          setRawData(data);
+          setIsLoading(false);
+        } catch (innerError) {
+          setError(`Error generating data: ${innerError.message}`);
+          setIsLoading(false);
+        }
+      }, 500);
+    } catch (outerError) {
+      setError(`Error: ${outerError.message}`);
       setIsLoading(false);
-    }, 500);
-  }, [selectedIndicator, getIndicatorDetails, startDate, endDate]); // Added getIndicatorDetails
+    }
+  }, [selectedIndicator, getIndicatorDetails, startDate, endDate]);
 
   // Initial data load
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Effect to apply transformations when rawData or selectedTransformation changes
+  // Apply transformations when rawData or selectedTransformation changes
   useEffect(() => {
     if (rawData.length === 0) {
       setChartData([]);
       return;
     }
 
-    // Placeholder for actual transformation logic
-    // For now, just passes raw data or could be extended
-    let transformed = [...rawData]; // Make a copy to avoid mutating rawData
-
-    // TODO: Implement actual transformation logic based on selectedTransformation
-    // Example (very basic, needs proper date handling for MoM, YoY etc.):
-    if (selectedTransformation === 'mom' && transformed.length > 1) {
-      // This is a conceptual placeholder, real MoM needs date logic
-      // transformed = transformed.map((d, i, arr) => ({
-      //   ...d,
-      //   value: i > 0 ? d.value - arr[i-1].value : 0 // Simplified, not robust
-      // }));
-      console.log("Month-over-Month transformation selected - logic not fully implemented yet.");
-    } else if (selectedTransformation === 'yoy' && transformed.length > 0) {
-      // This is a conceptual placeholder, real YoY needs date logic & matching to prev year
-      console.log("Year-over-Year transformation selected - logic not fully implemented yet.");
+    try {
+      const transformed = transformData(rawData, selectedTransformation);
+      setChartData(transformed);
+    } catch (error) {
+      console.error("Error applying transformation:", error);
+      setError(`Error applying transformation: ${error.message}`);
+      setChartData([...rawData]); // Fallback to raw data
     }
-    // ... other transformations
-
-    setChartData(transformed);
   }, [rawData, selectedTransformation]);
 
+  // Add current selection to watchlist
+  const addToWatchlist = useCallback(() => {
+    try {
+      const details = getIndicatorDetails();
+      const transformDetails = getTransformationDetails();
+      
+      if (!details) {
+        throw new Error("Invalid indicator selection");
+      }
+      
+      const newItem = {
+        id: `${selectedSource}-${selectedIndicator}-${Date.now()}`,
+        source: selectedSource,
+        indicator: selectedIndicator,
+        name: details.name || selectedIndicator,
+        transformation: selectedTransformation,
+        transformationName: transformDetails.name || "Raw Data",
+        startDate,
+        endDate,
+        frequency: details.frequency || 'monthly',
+        dateAdded: new Date().toISOString()
+      };
+      
+      setWatchlist(prev => {
+        // Check if already in watchlist
+        const isDuplicate = prev.some(item => 
+          item.source === newItem.source && 
+          item.indicator === newItem.indicator &&
+          item.transformation === newItem.transformation
+        );
+        
+        if (isDuplicate) {
+          setError("This indicator is already in your watchlist");
+          return prev;
+        }
+        
+        return [...prev, newItem];
+      });
+    } catch (error) {
+      setError(`Error adding to watchlist: ${error.message}`);
+    }
+  }, [selectedSource, selectedIndicator, selectedTransformation, startDate, endDate, getIndicatorDetails, getTransformationDetails]);
 
-  const addToWatchlist = () => {
-    const details = getIndicatorDetails();
-    const newItem = {
-      id: `${selectedSource}-${selectedIndicator}-${Date.now()}`,
-      source: selectedSource,
-      indicator: selectedIndicator,
-      name: details.name || selectedIndicator,
-      // Store current date range for consistency, or make it dynamic
-      startDate,
-      endDate,
-      frequency: details.frequency || 'monthly'
-    };
-    setWatchlist(prev => [...prev, newItem]);
-  };
-
-  const removeFromWatchlist = (id) => {
+  // Remove item from watchlist
+  const removeFromWatchlist = useCallback((id) => {
     setWatchlist(prev => prev.filter(item => item.id !== id));
-  };
+  }, []);
 
-  const connectWebSocket = () => {
+  // WebSocket connection management (simulation)
+  const connectWebSocket = useCallback(() => {
     setConnectionStatus('Connecting...');
     setTimeout(() => setConnectionStatus('Connected'), 1000);
-  };
+  }, []);
 
-  const disconnectWebSocket = () => {
+  const disconnectWebSocket = useCallback(() => {
     setConnectionStatus('Disconnected');
-  };
+  }, []);
 
-  // Memoize watchlist item data to prevent re-generation on every render unless dependencies change
+  // Memoized calculation of statistics to prevent unnecessary recalculations
+  const statistics = useMemo(() => {
+    if (!chartData || chartData.length === 0) {
+      return {
+        min: 0,
+        max: 0,
+        mean: 0,
+        median: 0,
+        stdDev: 0
+      };
+    }
+    
+    try {
+      const values = chartData.map(d => d.value);
+      return {
+        min: math.min(values),
+        max: math.max(values),
+        mean: math.mean(values),
+        median: math.median(values),
+        stdDev: math.std(values)
+      };
+    } catch (error) {
+      console.error("Error calculating statistics:", error);
+      return {
+        min: 0,
+        max: 0,
+        mean: 0,
+        median: 0,
+        stdDev: 0,
+        error: error.message
+      };
+    }
+  }, [chartData]);
+
+  // Memoize watchlist item chart component to prevent re-rendering
   const WatchlistItemChart = React.memo(({ item }) => {
     const [itemData, setItemData] = useState([]);
+    const [isItemLoading, setIsItemLoading] = useState(true);
+    const [itemError, setItemError] = useState('');
 
     useEffect(() => {
+      setIsItemLoading(true);
+      setItemError('');
+      
+      try {
         // Generate data once when item props change
         const data = generateMockData(
-            item.indicator,
-            item.frequency,
-            item.startDate, // Use item specific start/end or global ones
-            item.endDate
+          item.indicator,
+          item.frequency,
+          item.startDate,
+          item.endDate
         );
-        setItemData(data);
-    }, [item.indicator, item.frequency, item.startDate, item.endDate]);
+        
+        if (!data || data.length === 0) {
+          throw new Error("No data generated for item");
+        }
+        
+        // Apply transformation if needed
+        const transformedData = item.transformation !== 'raw' 
+          ? transformData(data, item.transformation)
+          : data;
+          
+        setItemData(transformedData);
+        setIsItemLoading(false);
+      } catch (error) {
+        console.error(`Error generating data for watchlist item ${item.id}:`, error);
+        setItemError(`Error: ${error.message}`);
+        setIsItemLoading(false);
+      }
+    }, [item.indicator, item.frequency, item.startDate, item.endDate, item.transformation]);
 
+    if (isItemLoading) {
+      return (
+        <div className="h-48 flex items-center justify-center">
+          <p className="text-gray-400 text-xs">Loading data...</p>
+        </div>
+      );
+    }
 
-    if (!itemData.length) return <div className="h-48 flex items-center justify-center"><p className="text-gray-400 text-xs">Loading data...</p></div>;
+    if (itemError) {
+      return (
+        <div className="h-48 flex items-center justify-center">
+          <p className="text-red-500 text-xs">{itemError}</p>
+        </div>
+      );
+    }
+
+    if (!itemData.length) {
+      return (
+        <div className="h-48 flex items-center justify-center">
+          <p className="text-gray-400 text-xs">No data available</p>
+        </div>
+      );
+    }
 
     return (
-        <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                    data={itemData}
-                    margin={{ top: 5, right: 20, left: -20, bottom: 5 }} // Adjust margins for mini chart
-                >
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickFormatter={(tick) => new Date(tick).getFullYear()} />
-                    <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
-                    <Tooltip contentStyle={{ fontSize: '10px' }} />
-                    <Line type="monotone" dataKey="value" stroke="#3B82F6" dot={false} strokeWidth={1.5}/>
-                </LineChart>
-            </ResponsiveContainer>
-        </div>
+      <div className="h-48">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={itemData}
+            margin={{ top: 5, right: 20, left: -20, bottom: 5 }} // Adjust margins for mini chart
+          >
+            <XAxis 
+              dataKey="date" 
+              tick={{ fontSize: 10 }} 
+              interval="preserveStartEnd" 
+              tickFormatter={(tick) => new Date(tick).getFullYear()} 
+            />
+            <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
+            <Tooltip 
+              contentStyle={{ fontSize: '10px' }}
+              formatter={(value) => [
+                `${parseFloat(value).toFixed(2)}${item.transformation.includes('pct') ? '%' : ''}`,
+                `${item.transformationName || 'Value'}`
+              ]}
+              labelFormatter={(label) => new Date(label).toLocaleDateString()}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="value" 
+              stroke="#3B82F6" 
+              dot={false} 
+              strokeWidth={1.5}
+              name={item.name}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     );
-});
+  });
 
+  // Ensure WatchlistItemChart has displayName for better debugging
+  WatchlistItemChart.displayName = 'WatchlistItemChart';
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Financial Data Dashboard</h1>
+
+        {/* Error message display */}
+        {error && (
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded" role="alert">
+            <p>{error}</p>
+            <button 
+              className="text-red-700 font-bold hover:text-red-900 ml-2"
+              onClick={() => setError('')}
+              aria-label="Dismiss error"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="mb-6">
@@ -278,12 +578,20 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {/* Data Source */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Data Source</label>
+                <label 
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                  htmlFor="data-source"
+                >
+                  Data Source
+                </label>
                 <select
+                  id="data-source"
                   value={selectedSource}
                   onChange={(e) => {
                     setSelectedSource(e.target.value);
-                    setSelectedIndicator(DATA_SOURCES[e.target.value][0]?.id || '');
+                    // Select first indicator from new source
+                    const firstIndicator = DATA_SOURCES[e.target.value]?.[0]?.id || '';
+                    setSelectedIndicator(firstIndicator);
                   }}
                   className="w-full p-2 border rounded bg-white"
                 >
@@ -295,8 +603,14 @@ const Dashboard = () => {
 
               {/* Indicator */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Indicator</label>
+                <label 
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                  htmlFor="indicator"
+                >
+                  Indicator
+                </label>
                 <select
+                  id="indicator"
                   value={selectedIndicator}
                   onChange={(e) => setSelectedIndicator(e.target.value)}
                   className="w-full p-2 border rounded bg-white"
@@ -307,26 +621,41 @@ const Dashboard = () => {
                 </select>
               </div>
 
-              {/* Time Frame (Note: this is not used to resample mock data currently) */}
+              {/* Time Frame - Now functional with proper helptext */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Time Frame</label>
+                <label 
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                  htmlFor="time-frame"
+                >
+                  Time Frame
+                </label>
                 <select
+                  id="time-frame"
                   value={selectedTimeFrame}
                   onChange={(e) => setSelectedTimeFrame(e.target.value)}
                   className="w-full p-2 border rounded bg-white"
-                  disabled // Disabled as it's not used for mock data resampling
                 >
                   {TIME_FRAMES.map(frame => (
                     <option key={frame.id} value={frame.id}>{frame.name}</option>
                   ))}
                 </select>
-                 <p className="text-xs text-gray-400 mt-1">Native frequency used for mock data.</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {getIndicatorDetails().frequency 
+                    ? `Native frequency: ${getIndicatorDetails().frequency}` 
+                    : "Native frequency used for data generation"}
+                </p>
               </div>
 
               {/* Transformation */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Transformation</label>
+                <label 
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                  htmlFor="transformation"
+                >
+                  Transformation
+                </label>
                 <select
+                  id="transformation"
                   value={selectedTransformation}
                   onChange={(e) => setSelectedTransformation(e.target.value)}
                   className="w-full p-2 border rounded bg-white"
@@ -335,7 +664,9 @@ const Dashboard = () => {
                     <option key={transform.id} value={transform.id}>{transform.name}</option>
                   ))}
                 </select>
-                 {selectedTransformation !== 'raw' && <p className="text-xs text-orange-500 mt-1">Note: Transformation logic is conceptual.</p>}
+                <p className="text-xs text-gray-400 mt-1">
+                  {getTransformationDetails().description || "Apply mathematical transformation to data"}
+                </p>
               </div>
             </div>
 
@@ -343,8 +674,14 @@ const Dashboard = () => {
               {/* Date Range */}
               <div className="flex items-center gap-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                  <label 
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                    htmlFor="start-date"
+                  >
+                    Start Date
+                  </label>
                   <input
+                    id="start-date"
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
@@ -352,8 +689,14 @@ const Dashboard = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                  <label 
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                    htmlFor="end-date"
+                  >
+                    End Date
+                  </label>
                   <input
+                    id="end-date"
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
@@ -366,15 +709,17 @@ const Dashboard = () => {
               <div className="flex items-end gap-2">
                 <button
                   onClick={fetchData}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150"
                   disabled={isLoading}
+                  aria-busy={isLoading}
                 >
                   {isLoading ? 'Loading...' : 'Update Chart'}
                 </button>
 
                 <button
                   onClick={addToWatchlist}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition duration-150"
+                  disabled={isLoading}
                 >
                   Add to Watchlist
                 </button>
@@ -384,26 +729,40 @@ const Dashboard = () => {
             {/* Chart */}
             <div className="h-96 mb-4">
               {isLoading && (
-                 <div className="h-full flex items-center justify-center">
-                    <p className="text-gray-500">Loading chart data...</p>
-                 </div>
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-gray-500">Loading chart data...</p>
+                </div>
               )}
               {!isLoading && chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={chartData} // Use potentially transformed data
-                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }} // Increased bottom margin for XAxis labels
+                    data={chartData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis
                       dataKey="date"
                       tick={{ fontSize: 12 }}
-                      angle={-30} // Angle ticks for better readability if dates are many
-                      textAnchor="end" // Adjust anchor for angled ticks
-                      minTickGap={30} // Show fewer ticks if crowded
+                      angle={-30}
+                      textAnchor="end"
+                      minTickGap={30}
+                      padding={{ left: 10, right: 10 }}
                     />
-                    <YAxis tick={{ fontSize: 12 }} domain={['auto', 'auto']}/>
-                    <Tooltip />
+                    <YAxis 
+                      tick={{ fontSize: 12 }} 
+                      domain={['auto', 'auto']}
+                      tickFormatter={(value) => selectedTransformation.includes('pct') 
+                        ? `${value}%` 
+                        : value.toLocaleString()
+                      }
+                    />
+                    <Tooltip 
+                      formatter={(value) => [
+                        `${parseFloat(value).toFixed(2)}${selectedTransformation.includes('pct') ? '%' : ''}`,
+                        getTransformationDetails().name || "Value"
+                      ]}
+                      labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                    />
                     <Legend />
                     <Line
                       type="monotone"
@@ -413,6 +772,7 @@ const Dashboard = () => {
                       strokeWidth={2}
                       dot={{ r: 2 }}
                       activeDot={{ r: 6 }}
+                      isAnimationActive={true}
                     />
 
                     {/* Crisis Markers */}
@@ -421,8 +781,9 @@ const Dashboard = () => {
                       const crisisStartDate = crisis.date || crisis.startDate;
                       const crisisEndDate = crisis.date || crisis.endDate;
                       
-                      if (new Date(crisisStartDate) > new Date(endDate) || new Date(crisisEndDate) < new Date(startDate)) {
-                          return null; // Don't render if crisis is outside current date range
+                      if (new Date(crisisStartDate) > new Date(endDate) || 
+                          new Date(crisisEndDate || crisisStartDate) < new Date(startDate)) {
+                        return null; // Don't render if crisis is outside current date range
                       }
 
                       if (crisis.date) {
@@ -430,10 +791,18 @@ const Dashboard = () => {
                           <ReferenceLine
                             key={crisis.name}
                             x={crisis.date}
-                            stroke="rgba(255, 0, 0, 0.7)"
+                            stroke="rgba(239, 68, 68, 0.7)" // Updated to more accessible red
                             strokeDasharray="4 4"
                           >
-                             <Label value={crisis.name} position="insideTopRight" fill="rgba(255,0,0,0.7)" fontSize={10} angle={-45} dy={-5} dx={5}/>
+                            <Label 
+                              value={crisis.name} 
+                              position="insideTopRight" 
+                              fill="rgba(239, 68, 68, 0.9)"
+                              fontSize={10} 
+                              angle={-45} 
+                              dy={-5} 
+                              dx={5}
+                            />
                           </ReferenceLine>
                         );
                       } else if (crisis.startDate && crisis.endDate) {
@@ -442,10 +811,18 @@ const Dashboard = () => {
                             key={crisis.name}
                             x1={crisis.startDate}
                             x2={crisis.endDate}
-                            fill="rgba(255, 0, 0, 0.1)"
-                            stroke="rgba(255, 0, 0, 0.3)"
+                            fill="rgba(239, 68, 68, 0.1)"
+                            stroke="rgba(239, 68, 68, 0.3)"
                           >
-                            <Label value={crisis.name} position="insideTopRight" fill="rgba(255,0,0,0.7)" fontSize={10} angle={-45} dy={-5} dx={5}/>
+                            <Label 
+                              value={crisis.name} 
+                              position="insideTopRight" 
+                              fill="rgba(239, 68, 68, 0.9)"
+                              fontSize={10} 
+                              angle={-45} 
+                              dy={-5} 
+                              dx={5}
+                            />
                           </ReferenceArea>
                         );
                       }
@@ -454,32 +831,55 @@ const Dashboard = () => {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                !isLoading && <div className="h-full flex items-center justify-center">
-                  <p className="text-gray-500">No data available or data is empty.</p>
-                </div>
+                !isLoading && (
+                  <div className="h-full flex items-center justify-center">
+                    <p className="text-gray-500">No data available. Try adjusting your filters or date range.</p>
+                  </div>
+                )
               )}
             </div>
 
             {/* Statistics */}
             {!isLoading && chartData.length > 0 && (
               <div className="bg-gray-50 p-4 rounded">
-                <h3 className="text-lg font-semibold mb-2">Statistics ({selectedTransformation} data)</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <h3 className="text-lg font-semibold mb-2">
+                  Statistics ({getTransformationDetails().name || "Raw"} data)
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Min</p>
-                    <p className="text-xl font-medium">{math.min(chartData.map(d => d.value)).toFixed(2)}</p>
+                    <p className="text-xl font-medium">
+                      {statistics.min.toFixed(2)}
+                      {selectedTransformation.includes('pct') ? '%' : ''}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Max</p>
-                    <p className="text-xl font-medium">{math.max(chartData.map(d => d.value)).toFixed(2)}</p>
+                    <p className="text-xl font-medium">
+                      {statistics.max.toFixed(2)}
+                      {selectedTransformation.includes('pct') ? '%' : ''}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Average</p>
-                    <p className="text-xl font-medium">{math.mean(chartData.map(d => d.value)).toFixed(2)}</p>
+                    <p className="text-xl font-medium">
+                      {statistics.mean.toFixed(2)}
+                      {selectedTransformation.includes('pct') ? '%' : ''}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Median</p>
+                    <p className="text-xl font-medium">
+                      {statistics.median.toFixed(2)}
+                      {selectedTransformation.includes('pct') ? '%' : ''}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Std Dev</p>
-                    <p className="text-xl font-medium">{math.std(chartData.map(d => d.value)).toFixed(2)}</p>
+                    <p className="text-xl font-medium">
+                      {statistics.stdDev.toFixed(2)}
+                      {selectedTransformation.includes('pct') ? '%' : ''}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -492,27 +892,51 @@ const Dashboard = () => {
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4">Your Watchlist</h2>
             {watchlist.length === 0 ? (
-              <p className="text-gray-500">Your watchlist is empty. Add indicators from the Explore tab.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {watchlist.map(item => (
-                  <div key={item.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="text-lg font-medium">{item.name}</h3>
-                        <p className="text-sm text-gray-500">{item.source} ({item.indicator})</p>
-                      </div>
-                      <button
-                        onClick={() => removeFromWatchlist(item.id)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <WatchlistItemChart item={item} />
-                  </div>
-                ))}
+              <div className="bg-gray-50 p-8 rounded-lg text-center">
+                <p className="text-gray-500 mb-4">Your watchlist is empty.</p>
+                <button
+                  onClick={() => setSelectedTab('explore')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-150"
+                >
+                  Go to Explore Tab to Add Indicators
+                </button>
               </div>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <button
+                    onClick={() => setWatchlist([])}
+                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition duration-150"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {watchlist.map(item => (
+                    <div key={item.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="text-lg font-medium">{item.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {item.source} ({item.indicator}) - {item.transformationName || "Raw Data"}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            Added: {new Date(item.dateAdded).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => removeFromWatchlist(item.id)}
+                          className="text-red-500 hover:text-red-700 text-sm transition-colors duration-150"
+                          aria-label={`Remove ${item.name} from watchlist`}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <WatchlistItemChart item={item} />
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
@@ -529,14 +953,14 @@ const Dashboard = () => {
                 {connectionStatus !== 'Connected' ? (
                   <button
                     onClick={connectWebSocket}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm transition duration-150"
                   >
                     Connect to WebSocket
                   </button>
                 ) : (
                   <button
                     onClick={disconnectWebSocket}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm transition duration-150"
                   >
                     Disconnect
                   </button>
@@ -581,9 +1005,9 @@ socket.onerror = (error) => {
               <div className="bg-gray-50 p-4 rounded">
                 <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
                   <li>Create an API Gateway WebSocket API in your AWS Console.</li>
-                  <li>Define routes (e.g., `$connect`, `$disconnect`, `$default`, custom action routes).</li>
+                  <li>Define routes (e.g., <code>$connect</code>, <code>$disconnect</code>, <code>$default</code>, custom action routes).</li>
                   <li>Integrate routes with backend services (e.g., Lambda functions) to handle connections, subscriptions, and data broadcasting.</li>
-                  <li>Lambda functions would manage connection IDs and publish data updates to subscribed clients using `ApiGatewayManagementApi`.</li>
+                  <li>Lambda functions would manage connection IDs and publish data updates to subscribed clients using <code>ApiGatewayManagementApi</code>.</li>
                   <li>Deploy your API and update the WebSocket URL in your client application.</li>
                   <li>Implement authentication/authorization (e.g., Lambda authorizer).</li>
                 </ol>
