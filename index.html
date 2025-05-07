@@ -1,105 +1,287 @@
-<!DOCTYPE html>
+[Paste the copied code<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FRED API Data Viewer</title>
+    <title>FRED API Data Fetcher</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
             padding: 20px;
+            line-height: 1.6;
         }
-        #data {
+        h1 {
+            color: #0066cc;
+            text-align: center;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0055aa;
+        }
+        #results {
             margin-top: 20px;
         }
-        table {
-            border-collapse: collapse;
+        #chart {
+            margin-top: 20px;
+            height: 400px;
             width: 100%;
         }
-        table, th, td {
-            border: 1px solid black;
+        .loading {
+            text-align: center;
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
         }
         th, td {
             padding: 8px;
             text-align: left;
+            border-bottom: 1px solid #ddd;
         }
-        .error {
-            color: red;
+        th {
+            background-color: #f2f2f2;
         }
     </style>
 </head>
 <body>
-    <h1>FRED API Data Viewer</h1>
-    <form id="fetchForm">
-        <label for="seriesId">Enter Series ID:</label>
-        <input type="text" id="seriesId" placeholder="e.g., GDP">
-        <button type="submit">Fetch Data</button>
-    </form>
-
-    <div id="data"></div>
-
+    <div class="container">
+        <h1>FRED Economic Data Fetcher</h1>
+        
+        <div class="form-group">
+            <label for="series-id">Series ID:</label>
+            <input type="text" id="series-id" placeholder="e.g., GDPC1, UNRATE, CPIAUCSL" value="GDPC1">
+        </div>
+        
+        <div class="form-group">
+            <label for="observation-start">Start Date:</label>
+            <input type="date" id="observation-start" value="2020-01-01">
+        </div>
+        
+        <div class="form-group">
+            <label for="observation-end">End Date:</label>
+            <input type="date" id="observation-end">
+        </div>
+        
+        <div class="form-group">
+            <label for="frequency">Frequency:</label>
+            <select id="frequency">
+                <option value="">Default</option>
+                <option value="d">Daily</option>
+                <option value="w">Weekly</option>
+                <option value="bw">Biweekly</option>
+                <option value="m">Monthly</option>
+                <option value="q">Quarterly</option>
+                <option value="sa">Semiannual</option>
+                <option value="a">Annual</option>
+            </select>
+        </div>
+        
+        <button id="fetch-data">Fetch Data</button>
+        
+        <div class="loading" id="loading">
+            <p>Loading data...</p>
+        </div>
+        
+        <div id="results"></div>
+        <div id="chart"></div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script>
-        const apiKey = '2f057499936072679d8843d7fce99989'; // Your FRED API key
-        const form = document.getElementById('fetchForm');
-        const dataDiv = document.getElementById('data');
-
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            dataDiv.innerHTML = ''; // Clear previous data
-
-            const seriesId = document.getElementById('seriesId').value.trim();
-            if (!seriesId) {
-                dataDiv.innerHTML = '<p class="error">Please enter a valid Series ID.</p>';
-                return;
-            }
-
-            const apiUrl = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${apiKey}&file_type=json`;
-
-            try {
-                const response = await fetch(apiUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                if (data && data.observations) {
-                    renderData(data.observations);
-                } else {
-                    dataDiv.innerHTML = '<p class="error">No data found for the provided Series ID.</p>';
-                }
-            } catch (error) {
-                dataDiv.innerHTML = `<p class="error">Error fetching data: ${error.message}</p>`;
-            }
+        // Set today's date as the default end date
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('observation-end').value = formattedDate;
         });
 
-        function renderData(observations) {
-            const table = document.createElement('table');
-            const headerRow = document.createElement('tr');
-
-            const dateHeader = document.createElement('th');
-            dateHeader.textContent = 'Date';
-            const valueHeader = document.createElement('th');
-            valueHeader.textContent = 'Value';
-
-            headerRow.appendChild(dateHeader);
-            headerRow.appendChild(valueHeader);
-            table.appendChild(headerRow);
-
-            observations.forEach(obs => {
-                const row = document.createElement('tr');
-                const dateCell = document.createElement('td');
-                dateCell.textContent = obs.date;
-                const valueCell = document.createElement('td');
-                valueCell.textContent = obs.value === '.' ? 'N/A' : obs.value;
-
-                row.appendChild(dateCell);
-                row.appendChild(valueCell);
-                table.appendChild(row);
-            });
-
-            dataDiv.appendChild(table);
+        // Your FRED API key
+        const apiKey = "2f057499936072679d8843d7fce99989";  // Replace with your actual API key
+        
+        document.getElementById('fetch-data').addEventListener('click', fetchData);
+        
+        let chart;
+        
+        async function fetchData() {
+            const seriesId = document.getElementById('series-id').value.trim();
+            const startDate = document.getElementById('observation-start').value;
+            const endDate = document.getElementById('observation-end').value;
+            const frequency = document.getElementById('frequency').value;
+            
+            if (!seriesId) {
+                alert('Please enter a Series ID');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('results');
+            const loadingDiv = document.getElementById('loading');
+            const chartDiv = document.getElementById('chart');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+            if (chart) {
+                chart.destroy();
+            }
+            
+            try {
+                // First, get the series title for display purposes
+                const infoUrl = `https://api.stlouisfed.org/fred/series?series_id=${seriesId}&api_key=${apiKey}&file_type=json`;
+                const infoResponse = await fetch(infoUrl);
+                const infoData = await infoResponse.json();
+                
+                if (!infoResponse.ok) {
+                    throw new Error(`API error: ${infoData.error_message || 'Unknown error'}`);
+                }
+                
+                const seriesTitle = infoData.seriess[0].title;
+                
+                // Now get the actual data
+                let url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${apiKey}&file_type=json`;
+                
+                if (startDate) {
+                    url += `&observation_start=${startDate}`;
+                }
+                if (endDate) {
+                    url += `&observation_end=${endDate}`;
+                }
+                if (frequency) {
+                    url += `&frequency=${frequency}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${data.error_message || 'Unknown error'}`);
+                }
+                
+                if (data.observations.length === 0) {
+                    resultsDiv.innerHTML = '<p>No data found for the specified parameters.</p>';
+                } else {
+                    // Create a header with series info
+                    const header = document.createElement('h2');
+                    header.textContent = seriesTitle;
+                    resultsDiv.appendChild(header);
+                    
+                    // Display data in a table
+                    const table = document.createElement('table');
+                    const thead = document.createElement('thead');
+                    const headerRow = document.createElement('tr');
+                    
+                    const dateHeader = document.createElement('th');
+                    dateHeader.textContent = 'Date';
+                    headerRow.appendChild(dateHeader);
+                    
+                    const valueHeader = document.createElement('th');
+                    valueHeader.textContent = 'Value';
+                    headerRow.appendChild(valueHeader);
+                    
+                    thead.appendChild(headerRow);
+                    table.appendChild(thead);
+                    
+                    const tbody = document.createElement('tbody');
+                    
+                    // Prepare data for chart
+                    const chartLabels = [];
+                    const chartValues = [];
+                    
+                    data.observations.forEach(obs => {
+                        const row = document.createElement('tr');
+                        
+                        const dateCell = document.createElement('td');
+                        dateCell.textContent = obs.date;
+                        row.appendChild(dateCell);
+                        
+                        const valueCell = document.createElement('td');
+                        valueCell.textContent = obs.value === '.' ? 'No data' : obs.value;
+                        row.appendChild(valueCell);
+                        
+                        tbody.appendChild(row);
+                        
+                        // Add to chart data if value is valid
+                        if (obs.value !== '.') {
+                            chartLabels.push(obs.date);
+                            chartValues.push(parseFloat(obs.value));
+                        }
+                    });
+                    
+                    table.appendChild(tbody);
+                    resultsDiv.appendChild(table);
+                    
+                    // Create a chart
+                    const ctx = document.createElement('canvas');
+                    ctx.id = 'data-chart';
+                    chartDiv.innerHTML = '';
+                    chartDiv.appendChild(ctx);
+                    
+                    chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: chartLabels,
+                            datasets: [{
+                                label: seriesTitle,
+                                data: chartValues,
+                                borderColor: '#0066cc',
+                                backgroundColor: 'rgba(0, 102, 204, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    ticks: {
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<p style="color: red">Error: ${error.message}</p>`;
+                console.error('Error fetching data:', error);
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
         }
     </script>
 </body>
-</html>
+</html> here]
