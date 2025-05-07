@@ -3,1562 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Financial Analytics Suite</title>
+    <title>Institutional-Grade Financial Analytics Suite</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/2.2.1/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash/4.17.21/lodash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.2.1/chartjs-plugin-zoom.min.js"></script>
     <style>
-        :root {
-            /* Primary colors */
-            --primary-dark: #1e2c3c;
-            --primary: #2c3e50;
-            --primary-light: #34495e;
-            --secondary: #2980b9;
-            --accent: #3498db;
-            --success: #2ecc71;
-            --warning: #f39c12;
-            --danger: #e74c3c;
-            --info: #3498db;
-            
-            /* Neutral colors */
-            --dark: #121212;
-            --dark-gray: #2c3e50;
-            --medium-gray: #7f8c8d;
-            --light-gray: #ecf0f1;
-            --white: #ffffff;
-            
-            /* Chart colors */
-            --chart-primary: rgba(52, 152, 219, 1);
-            --chart-secondary: rgba(46, 204, 113, 1);
-            --chart-tertiary: rgba(155, 89, 182, 1);
-            --chart-quaternary: rgba(241, 196, 15, 1);
-            --chart-quinary: rgba(231, 76, 60, 1);
-            
-            /* Font */
-            --font-primary: 'Roboto', 'Segoe UI', sans-serif;
-            --font-secondary: 'Open Sans', Arial, sans-serif;
-            --font-mono: 'Roboto Mono', monospace;
-            
-            /* Sizing */
-            --header-height: 60px;
-            --sidebar-width: 260px;
-            --border-radius: 6px;
-            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-
-        .dark-theme {
-            --primary-dark: #273746;
-            --primary: #34495e;
-            --primary-light: #3c556e;
-            --secondary: #2980b9;
-            --accent: #3498db;
-            
-            /* Neutral colors */
-            --dark: #0f0f0f;
-            --dark-gray: #1e272e;
-            --medium-gray: #8395a7;
-            --light-gray: #34495e;
-            --white: #1e272e;
-            
-            /* Chart colors */
-            --chart-primary: rgba(52, 152, 219, 1);
-            --chart-secondary: rgba(46, 204, 113, 1);
-            --chart-tertiary: rgba(155, 89, 182, 1);
-            --chart-quaternary: rgba(241, 196, 15, 1);
-            --chart-quinary: rgba(231, 76, 60, 1);
-            
-            color-scheme: dark;
-        }
-
-        * {
-            box-sizing: border-box;
+        body {
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
+            background-color: #f4f4f4;
         }
-
-        body {
-            font-family: var(--font-primary);
-            font-size: 14px;
-            line-height: 1.5;
-            color: var(--dark-gray);
-            background-color: var(--light-gray);
-            overflow: hidden;
-            position: relative;
-            height: 100vh;
-        }
-
-        .dark-theme body {
-            color: #e0e0e0;
-            background-color: var(--dark);
-        }
-
-        /* Layout */
-        .app-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-        }
-
-        .header {
-            height: var(--header-height);
-            background-color: var(--primary);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-        }
-
-        .header-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            font-weight: 700;
-            font-size: 20px;
-            color: white;
-            text-decoration: none;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        .sidebar {
-            width: var(--sidebar-width);
-            background-color: var(--white);
-            border-right: 1px solid var(--light-gray);
-            overflow-y: auto;
-            transition: var(--transition);
-            z-index: 100;
-        }
-
-        .dark-theme .sidebar {
-            background-color: var(--dark-gray);
-            border-right: 1px solid var(--primary-dark);
-        }
-
-        .sidebar-collapsed {
-            width: 60px;
-        }
-
-        .content {
-            flex: 1;
-            overflow-y: auto;
+        .container {
             padding: 20px;
-            position: relative;
         }
-
-        /* Sidebar Navigation */
-        .nav-section {
-            margin-bottom: 8px;
+        .chart-container, .sentiment-container {
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
-        .nav-section-title {
-            padding: 12px 16px;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--medium-gray);
-            font-weight: 600;
+        canvas {
+            max-width: 100%;
+            height: auto;
         }
-
-        .dark-theme .nav-section-title {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .nav-list {
-            list-style: none;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 16px;
-            color: var(--dark-gray);
-            text-decoration: none;
-            transition: var(--transition);
-            cursor: pointer;
-            border-left: 3px solid transparent;
-        }
-
-        .dark-theme .nav-item {
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .nav-item:hover {
-            background-color: rgba(52, 152, 219, 0.05);
-        }
-
-        .nav-item.active {
-            background-color: rgba(52, 152, 219, 0.1);
-            color: var(--accent);
-            border-left: 3px solid var(--accent);
-        }
-
-        .dark-theme .nav-item.active {
-            background-color: rgba(52, 152, 219, 0.2);
-        }
-
-        .nav-item-icon {
-            margin-right: 12px;
-            font-size: 18px;
-            width: 20px;
-            text-align: center;
-        }
-
-        .nav-item-text {
-            flex: 1;
-        }
-
-        .sidebar-collapsed .nav-item-text,
-        .sidebar-collapsed .nav-section-title {
-            display: none;
-        }
-
-        /* Button Styles */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8px 16px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            text-decoration: none;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background-color: var(--accent);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #2980b9;
-        }
-
-        .btn-secondary {
-            background-color: transparent;
-            color: var(--dark-gray);
-            border: 1px solid var(--medium-gray);
-        }
-
-        .dark-theme .btn-secondary {
-            color: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .btn-secondary:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
-
-        .dark-theme .btn-secondary:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-
-        .btn-icon {
-            width: 36px;
-            height: 36px;
-            padding: 0;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 13px;
-        }
-
-        /* Dashboard */
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            gap: 20px;
-        }
-
-        .dashboard-header {
-            grid-column: span 12;
+        .sentiment-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
         }
-
-        .dashboard-title {
+        .sentiment-score {
             font-size: 24px;
-            font-weight: 500;
-        }
-
-        .dashboard-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .timeframe-selector {
-            display: flex;
-            background-color: var(--white);
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            box-shadow: var(--box-shadow);
-        }
-
-        .dark-theme .timeframe-selector {
-            background-color: var(--dark-gray);
-        }
-
-        .timeframe-btn {
-            padding: 8px 12px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--dark-gray);
-            transition: var(--transition);
-        }
-
-        .dark-theme .timeframe-btn {
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .timeframe-btn:hover {
-            background-color: rgba(52, 152, 219, 0.05);
-        }
-
-        .timeframe-btn.active {
-            background-color: var(--accent);
-            color: white;
-        }
-
-        /* Cards */
-        .card {
-            background-color: var(--white);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            overflow: hidden;
-        }
-
-        .dark-theme .card {
-            background-color: var(--dark-gray);
-        }
-
-        .card-header {
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--light-gray);
-        }
-
-        .dark-theme .card-header {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .card-title {
-            font-size: 16px;
-            font-weight: 500;
-        }
-
-        .card-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .card-body {
-            padding: 16px;
-        }
-
-        .card-footer {
-            padding: 12px 16px;
-            border-top: 1px solid var(--light-gray);
-            font-size: 13px;
-            color: var(--medium-gray);
-        }
-
-        .dark-theme .card-footer {
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Chart specific cards */
-        .chart-card {
-            grid-column: span 6;
-            display: flex;
-            flex-direction: column;
-        }
-
-        @media (max-width: 1200px) {
-            .chart-card {
-                grid-column: span 12;
-            }
-        }
-
-        .chart-container {
-            flex: 1;
-            position: relative;
-            min-height: 300px;
-            padding: 16px;
-        }
-
-        .chart-placeholder {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--medium-gray);
-        }
-
-        .chart-toolbar {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 16px;
-            background-color: rgba(0, 0, 0, 0.02);
-            border-top: 1px solid var(--light-gray);
-        }
-
-        .dark-theme .chart-toolbar {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .chart-toolbar-section {
-            display: flex;
-            gap: 8px;
-        }
-
-        /* Metrics Cards */
-        .metric-card {
-            grid-column: span 3;
-            padding: 16px;
-        }
-
-        @media (max-width: 992px) {
-            .metric-card {
-                grid-column: span 6;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .metric-card {
-                grid-column: span 12;
-            }
-        }
-
-        .metric-title {
-            font-size: 14px;
-            color: var(--medium-gray);
-            margin-bottom: 8px;
-        }
-
-        .metric-value {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .metric-change {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 13px;
-        }
-
-        .metric-change.positive {
-            color: var(--success);
-        }
-
-        .metric-change.negative {
-            color: var(--danger);
-        }
-
-        /* Data Table */
-        .table-container {
-            grid-column: span 12;
-            overflow: auto;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 12px 16px;
-            text-align: left;
-        }
-
-        .data-table th {
-            font-weight: 500;
-            color: var(--medium-gray);
-            background-color: rgba(0, 0, 0, 0.02);
-            border-bottom: 1px solid var(--light-gray);
-        }
-
-        .dark-theme .data-table th {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .data-table tbody tr:hover {
-            background-color: rgba(0, 0, 0, 0.02);
-        }
-
-        .dark-theme .data-table tbody tr:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-
-        .data-table td {
-            border-bottom: 1px solid var(--light-gray);
-        }
-
-        .dark-theme .data-table td {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Controls Panel */
-        .controls-panel {
-            position: fixed;
-            top: var(--header-height);
-            right: 0;
-            width: 360px;
-            height: calc(100vh - var(--header-height));
-            background-color: var(--white);
-            border-left: 1px solid var(--light-gray);
-            z-index: 100;
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-            overflow-y: auto;
-        }
-
-        .dark-theme .controls-panel {
-            background-color: var(--dark-gray);
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .controls-panel.open {
-            transform: translateX(0);
-            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .controls-header {
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--light-gray);
-        }
-
-        .dark-theme .controls-header {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .controls-title {
-            font-size: 18px;
-            font-weight: 500;
-        }
-
-        .controls-close {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--medium-gray);
-        }
-
-        .controls-tabs {
-            display: flex;
-            border-bottom: 1px solid var(--light-gray);
-        }
-
-        .dark-theme .controls-tabs {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .controls-tab {
-            flex: 1;
-            padding: 12px 16px;
-            text-align: center;
-            cursor: pointer;
-            transition: var(--transition);
-            color: var(--medium-gray);
-            font-weight: 500;
-        }
-
-        .controls-tab:hover {
-            background-color: rgba(0, 0, 0, 0.02);
-        }
-
-        .dark-theme .controls-tab:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-
-        .controls-tab.active {
-            color: var(--accent);
-            border-bottom: 2px solid var(--accent);
-        }
-
-        .controls-body {
-            padding: 16px;
-        }
-
-        .controls-section {
-            margin-bottom: 24px;
-        }
-
-        .controls-section-title {
-            font-size: 15px;
-            font-weight: 500;
-            margin-bottom: 12px;
-            color: var(--dark-gray);
-        }
-
-        .dark-theme .controls-section-title {
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        /* Form Elements */
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 13px;
-            color: var(--medium-gray);
-        }
-
-        .dark-theme .form-label {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--light-gray);
-            border-radius: var(--border-radius);
-            background-color: var(--white);
-            color: var(--dark-gray);
-            transition: var(--transition);
-        }
-
-        .dark-theme .form-control {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-        }
-
-        /* Switch */
-        .switch-container {
-            display: flex;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 22px;
-            margin-right: 12px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--light-gray);
-            transition: var(--transition);
-            border-radius: 22px;
-        }
-
-        .dark-theme .slider {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 2px;
-            bottom: 2px;
-            background-color: white;
-            transition: var(--transition);
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: var(--accent);
-        }
-
-        input:focus + .slider {
-            box-shadow: 0 0 1px var(--accent);
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(18px);
-        }
-
-        .switch-label {
-            font-size: 14px;
-            color: var(--dark-gray);
-        }
-
-        .dark-theme .switch-label {
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        /* Indicator chips */
-        .indicators-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .indicator-chip {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 10px;
-            background-color: rgba(52, 152, 219, 0.1);
-            border-radius: 16px;
-            font-size: 13px;
-            color: var(--accent);
-        }
-
-        .dark-theme .indicator-chip {
-            background-color: rgba(52, 152, 219, 0.2);
-        }
-
-        .indicator-chip-remove {
-            margin-left: 6px;
-            cursor: pointer;
-            width: 16px;
-            height: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            background-color: rgba(0, 0, 0, 0.1);
-        }
-
-        .dark-theme .indicator-chip-remove {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        /* Tooltips */
-        [data-tooltip] {
-            position: relative;
-        }
-
-        [data-tooltip]:before {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%) translateY(-4px);
-            padding: 4px 8px;
-            background-color: var(--dark-gray);
-            color: white;
-            font-size: 12px;
-            border-radius: 4px;
-            white-space: nowrap;
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.2s, transform 0.2s;
-            z-index: 1000;
-        }
-
-        [data-tooltip]:hover:before {
-            visibility: visible;
-            opacity: 1;
-            transform: translateX(-50%) translateY(-8px);
-        }
-
-        /* Loading indicator */
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 255, 255, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-            visibility: hidden;
-            opacity: 0;
-            transition: var(--transition);
-        }
-
-        .dark-theme .loading-overlay {
-            background-color: rgba(30, 39, 46, 0.8);
-        }
-
-        .loading-overlay.active {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(52, 152, 219, 0.2);
-            border-radius: 50%;
-            border-top-color: var(--accent);
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 992px) {
-            .controls-panel {
-                width: 300px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                position: fixed;
-                top: var(--header-height);
-                left: 0;
-                bottom: 0;
-                transform: translateX(-100%);
-                z-index: 1000;
-            }
-
-            .sidebar.open {
-                transform: translateX(0);
-                box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
-            }
-
-            .chart-card {
-                grid-column: span 12;
-            }
-        }
-
-        /* Icons (SVG) */
-        .icon {
-            width: 20px;
-            height: 20px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        /* Chart Legend */
-        .chart-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            padding: 12px 16px;
-            border-top: 1px solid var(--light-gray);
-        }
-
-        .dark-theme .chart-legend {
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-        }
-
-        .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
-        }
-
-        /* Chart custom styles */
-        .annotation-label {
-            background-color: rgba(44, 62, 80, 0.7);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            pointer-events: none;
-        }
-
-        .dark-theme .annotation-label {
-            background-color: rgba(255, 255, 255, 0.7);
-            color: var(--dark);
-        }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--medium-gray);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--dark-gray);
-        }
-
-        /* Drag handle for resizing */
-        .resize-handle {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            cursor: col-resize;
-            background-color: transparent;
-            transition: background-color 0.2s;
-        }
-
-        .resize-handle:hover {
-            background-color: rgba(52, 152, 219, 0.2);
-        }
-
-        .resize-handle-sidebar {
-            right: -2px;
-        }
-
-        .resize-handle-controls {
-            left: -2px;
-        }
-
-        /* Multi-select dropdown */
-        .multi-select {
-            position: relative;
-        }
-
-        .multi-select-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 12px;
-            border: 1px solid var(--light-gray);
-            border-radius: var(--border-radius);
-            background-color: var(--white);
-            cursor: pointer;
-        }
-
-        .dark-theme .multi-select-toggle {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .multi-select-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: var(--white);
-            border: 1px solid var(--light-gray);
-            border-radius: var(--border-radius);
-            margin-top: 4px;
-            z-index: 100;
-            display: none;
-        }
-
-        .dark-theme .multi-select-dropdown {
-            background-color: var(--dark-gray);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .multi-select.open .multi-select-dropdown {
-            display: block;
-        }
-
-        .multi-select-option {
-            padding: 8px 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-        }
-
-        .multi-select-option:hover {
-            background-color: rgba(52, 152, 219, 0.05);
-        }
-
-        .multi-select-option input {
-            margin-right: 8px;
-        }
-
-        /* Alert */
-        .alert {
-            padding: 12px 16px;
-            border-radius: var(--border-radius);
-            margin-bottom: 16px;
-        }
-
-        .alert-info {
-            background-color: rgba(52, 152, 219, 0.1);
-            border-left: 4px solid var(--info);
-            color: var(--info);
-        }
-
-        .alert-warning {
-            background-color: rgba(243, 156, 18, 0.1);
-            border-left: 4px solid var(--warning);
-            color: var(--warning);
-        }
-
-        /* Timeframe selector with date picker */
-        .date-range-picker {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .date-input {
-            width: 130px;
-        }
-
-        /* Notification */
-        .notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 12px 16px;
-            background-color: var(--white);
-            border-left: 4px solid var(--success);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            transform: translateY(100px);
-            opacity: 0;
-            transition: transform 0.3s, opacity 0.3s;
-            z-index: 1000;
-            max-width: 300px;
-        }
-
-        .dark-theme .notification {
-            background-color: var(--dark-gray);
-        }
-
-        .notification.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .notification-title {
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-
-        .notification-message {
-            font-size: 13px;
-            color: var(--medium-gray);
-        }
-
-        .dark-theme .notification-message {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .dropdown-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .dropdown-menu {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            min-width: 180px;
-            background-color: var(--white);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            z-index: 1000;
-            display: none;
-            border: 1px solid var(--light-gray);
-        }
-
-        .dark-theme .dropdown-menu {
-            background-color: var(--dark-gray);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .dropdown.open .dropdown-menu {
-            display: block;
-        }
-
-        .dropdown-item {
-            padding: 8px 16px;
-            color: var(--dark-gray);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: var(--transition);
-        }
-
-        .dark-theme .dropdown-item {
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .dropdown-item:hover {
-            background-color: rgba(52, 152, 219, 0.05);
-        }
-
-        .dropdown-divider {
-            height: 1px;
-            background-color: var(--light-gray);
-            margin: 6px 0;
-        }
-
-        .dark-theme .dropdown-divider {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background-color: var(--accent);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 500;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <header class="header">
-            <div class="header-brand">
-                <a href="#" class="logo">
-                    <svg class="icon" viewBox="0 0 24 24">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                    </svg>
-                    FinCharts Pro
-                </a>
-                <button class="btn btn-icon btn-secondary" id="toggle-sidebar" data-tooltip="Toggle Sidebar">
-                    <svg class="icon" viewBox="0 0 24 24">
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-            <div class="header-actions">
-                <button class="btn btn-secondary btn-sm" id="toggle-controls">
-                    <svg class="icon" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                    Chart Settings
-                </button>
-                <button class="btn btn-secondary btn-sm" id="toggle-theme">
-                    <svg class="icon light-icon" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                    <svg class="icon dark-icon" viewBox="0 0 24 24" style="display: none;">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                    Theme
-                </button>
-                <div class="dropdown" id="user-dropdown">
-                    <div class="dropdown-toggle">
-                        <div class="avatar">JP</div>
-                    </div>
-                    <div class="dropdown-menu">
-                        <a href="#" class="dropdown-item">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                            </svg>
-                            Profile
-                        </a>
-                        <a href="#" class="dropdown-item">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                <polyline points="7 3 7 8 15 8"></polyline>
-                            </svg>
-                            My Presets
-                        </a>
-                        <a href="#" class="dropdown-item">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="3"></circle>
-                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                            </svg>
-                            Settings
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                <polyline points="16 17 21 12 16 7"></polyline>
-                                <line x1="21" y1="12" x2="9" y2="12"></line>
-                            </svg>
-                            Logout
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </header>
+    <div class="container">
+        <h1>Institutional-Grade Financial Analytics Suite</h1>
 
-        <div class="main-container">
-            <aside class="sidebar" id="sidebar">
-                <div class="resize-handle resize-handle-sidebar" id="sidebar-resize-handle"></div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Main</div>
-                    <ul class="nav-list">
-                        <li class="nav-item active">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <rect x="3" y="3" width="7" height="7"></rect>
-                                    <rect x="14" y="3" width="7" height="7"></rect>
-                                    <rect x="14" y="14" width="7" height="7"></rect>
-                                    <rect x="3" y="14" width="7" height="7"></rect>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Dashboard</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Charts</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">News</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Calendar</span>
-                        </li>
-                    </ul>
-                </div>
+        <!-- Candlestick Chart -->
+        <div class="chart-container">
+            <h2>Candlestick Chart</h2>
+            <canvas id="candlestickChart"></canvas>
+        </div>
 
-                <div class="nav-section">
-                    <div class="nav-section-title">Analysis</div>
-                    <ul class="nav-list">
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Screener</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <line x1="4" y1="21" x2="4" y2="14"></line>
-                                    <line x1="4" y1="10" x2="4" y2="3"></line>
-                                    <line x1="12" y1="21" x2="12" y2="12"></line>
-                                    <line x1="12" y1="8" x2="12" y2="3"></line>
-                                    <line x1="20" y1="21" x2="20" y2="16"></line>
-                                    <line x1="20" y1="12" x2="20" y2="3"></line>
-                                    <line x1="1" y1="14" x2="7" y2="14"></line>
-                                    <line x1="9" y1="8" x2="15" y2="8"></line>
-                                    <line x1="17" y1="16" x2="23" y2="16"></line>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Settings</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M3 3v18h18"></path>
-                                    <path d="M18 17l1 1h1a1 1 0 0 0 1-1v-1l-3 1z"></path>
-                                    <path d="M9 11l3 3 2-2 3 3"></path>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Backtesting</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Portfolio</span>
-                        </li>
-                    </ul>
-                </div>
+        <!-- Sentiment Analysis -->
+        <div class="sentiment-container">
+            <h2>Sentiment Analysis</h2>
+            <div class="sentiment-score" id="sentimentScore">Loading...</div>
+        </div>
 
-                <div class="nav-section">
-                    <div class="nav-section-title">Watchlists</div>
-                    <ul class="nav-list">
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Tech Stocks</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Major Indices</span>
-                        </li>
-                        <li class="nav-item">
-                            <span class="nav-item-icon">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </span>
-                            <span class="nav-item-text">Crypto</span>
-                        </li>
-                    </ul>
-                </div>
-            </aside>
+        <!-- RSI and Bollinger Bands -->
+        <div class="chart-container">
+            <h2>RSI and Bollinger Bands</h2>
+            <canvas id="rsiBollingerChart"></canvas>
+        </div>
+    </div>
 
-            <main class="content">
-                <div class="dashboard">
-                    <div class="dashboard-header">
-                        <h1 class="dashboard-title">Financial Analytics</h1>
-                        <div class="dashboard-actions">
-                            <div class="timeframe-selector">
-                                <button class="timeframe-btn" data-timeframe="1D">1D</button>
-                                <button class="timeframe-btn" data-timeframe="1W">1W</button>
-                                <button class="timeframe-btn" data-timeframe="1M">1M</button>
-                                <button class="timeframe-btn active" data-timeframe="3M">3M</button>
-                                <button class="timeframe-btn" data-timeframe="6M">6M</button>
-                                <button class="timeframe-btn" data-timeframe="1Y">1Y</button>
-                                <button class="timeframe-btn" data-timeframe="5Y">5Y</button>
-                                <button class="timeframe-btn" data-timeframe="MAX">MAX</button>
-                            </div>
-                            <button class="btn btn-secondary btn-sm" id="custom-date-btn">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                                Custom
-                            </button>
-                            <button class="btn btn-primary btn-sm">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="12" y1="8" x2="12" y2="16"></line>
-                                    <line x1="8" y1="12" x2="16" y2="12"></line>
-                                </svg>
-                                Add Chart
-                            </button>
-                        </div>
-                    </div>
+    <script>
+        // Real-Time Candlestick Chart
+        const candlestickCtx = document.getElementById('candlestickChart').getContext('2d');
+        const candlestickChart = new Chart(candlestickCtx, {
+            type: 'candlestick',
+            data: {
+                datasets: [{
+                    label: 'AAPL',
+                    data: [],
+                    borderColor: '#2ecc71',
+                    backgroundColor: '#3498db',
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'xy'
+                        },
+                        zoom: {
+                            enabled: true,
+                            mode: 'xy'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'minute'
+                        }
+                    },
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
 
-                    <!-- Metrics Row -->
-                    <div class="card metric-card">
-                        <div class="metric-title">Current Price</div>
-                        <div class="metric-value">$187.43</div>
-                        <div class="metric-change positive">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <polyline points="18 15 12 9 6 15"></polyline>
-                            </svg>
-                            +2.5% today
-                        </div>
-                    </div>
+        // WebSocket for Real-Time Data
+        const ws = new WebSocket('wss://eodhd.com/ws'); // Replace with actual EODHD WebSocket URL
+        ws.onopen = () => {
+            console.log('WebSocket connection established');
+            ws.send(JSON.stringify({ action: 'subscribe', symbols: ['AAPL'] }));
+        };
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            if (message.type === 'trade') {
+                const data = message.data;
+                const newCandle = {
+                    t: data.timestamp, // Time
+                    o: data.open,      // Open
+                    h: data.high,      // High
+                    l: data.low,       // Low
+                    c: data.close      // Close
+                };
+                candlestickChart.data.datasets[0].data.push(newCandle);
+                candlestickChart.update();
+            }
+        };
 
-                    <div class="card metric-card">
-                        <div class="metric-title">YTD Return</div>
-                        <div class="metric-value">+24.7%</div>
-                        <div class="metric-change positive">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <polyline points="18 15 12 9 6 15"></polyline>
-                            </svg>
-                            +5.3% vs S&P 500
-                        </div>
-                    </div>
+        // Sentiment Analysis
+        const sentimentScoreElement = document.getElementById('sentimentScore');
+        async function fetchSentiment() {
+            const response = await fetch('https://api.arya.ai/sentiment?symbol=AAPL'); // Replace with actual Arya API URL
+            const data = await response.json();
+            sentimentScoreElement.innerText = `${data.sentimentScore > 0 ? 'Positive' : 'Negative'} (${data.sentimentScore})`;
+        }
+        fetchSentiment();
 
-                    <div class="card metric-card">
-                        <div class="metric-title">1Y Price Change</div>
-                        <div class="metric-value">+32.1%</div>
-                        <div class="metric-change positive">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <polyline points="18 15 12 9 6 15"></polyline>
-                            </svg>
-                            YoY comparison
-                        </div>
-                    </div>
-
-                    <div class="card metric-card">
-                        <div class="metric-title">Volatility (30D)</div>
-                        <div class="metric-value">17.8%</div>
-                        <div class="metric-change negative">
-                            <svg class="icon" viewBox="0 0 24 24">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                            -2.3% MoM
-                        </div>
-                    </div>
-
-                    <!-- Primary Chart -->
-                    <div class="card chart-card">
-                        <div class="card-header">
-                            <h3 class="card-title">AAPL Price with YoY and MoM % Change</h3>
-                            <div class="card-actions">
-                                <button class="btn btn-icon btn-secondary" data-tooltip="Fullscreen">
-                                    <svg class="icon" viewBox="0 0 24 24">
-                                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-                                    </svg>
-                                </button>
-                                <button class="btn btn-icon btn-secondary" data-tooltip="Export">
-                                    <svg class="icon" viewBox="0 0 24 24">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                        <polyline points="7 10 12 15 17 10"></polyline>
-                                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                                    </svg>
-                                </button>
-                                <button class="btn btn-icon btn-secondary" data-tooltip="More Options">
-                                    <svg class="icon" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="12" r="1"></circle>
-                                        <circle cx="12" cy="5" r="1"></circle>
-                                        <circle cx="12" cy="19" r="1"></circle>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="priceChart"></canvas>
-                            <div class="loading-overlay" id="priceChartLoading">
-                                <div class="spinner"></div>
-                            </div>
-                        </div>
-                        <div class="chart-legend">
-                            <div class="legend-item">
-                                <div class="legend-color" style="background-color: var(--chart-primary);"></div>
-                                <span>Current Price</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color" style="background-color: var(--chart-secondary);"></div>
-                                <span>Previous Year</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color" style="background-color: var(--chart-tertiary);"></div>
-                                <span>YoY Change %</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color" style="background-color: var(--chart-quinary);"></div>
-                                <span>MoM Change %</span>
-                            </div>
-                        </div>
-                        <div class="chart-toolbar">
-                            <div class="chart-toolbar-section">
-                                <button class="btn btn-sm btn-secondary" id="toggle-sma">
-                                    SMA
-                                </button>
-                                <button class="btn btn-sm btn-secondary" id="toggle-ema">
-                                    EMA
-                                </button>
-                                <button class="btn btn-sm btn-secondary" id="toggle-bollinger">
-                                    Bollinger
-                                </button>
-                            </div>
-                            <div class="chart-toolbar-section">
-                                <button class="btn btn-sm btn-secondary" id="toggle-volume">
-                                    Volume
-                                </button>
-                                <button class="btn btn-sm btn-secondary" id="toggle-macd">
-                                    MACD
-                                </button>
-                                <button class="btn btn-sm btn-secondary" id="toggle-rsi">
-                                    RSI
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Secondary Chart -->
-                    <div class="card chart-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Technical Analysis with Indicators</h3>
-                            <div class="card-actions">
-                                <button class="btn btn-icon btn-secondary" data-tooltip="Fullscreen">
-                                    <svg class="icon" viewBox="0 0 24 24">
-                                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+        // RSI and Bollinger Bands Chart
+        const rsiBollingerCtx = document.getElementById('rsiBollingerChart').getContext('2d');
+        const rsiBollingerChart = new Chart(rsiBollingerCtx, {
+            type: 'line',
+            data: {
+                labels: ['2025-05-01', '2025-05-02', '2025-05-03', '2025-05-04'],
+                datasets: [
+                    {
+                        label: 'RSI',
+                        data: [30, 40, 50, 70],
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2,
+                        fill: false
+                    },
+                    {
+                        label: 'Bollinger Upper',
+                        data: [160, 162, 164, 166],
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false
+                    },
+                    {
+                        label: 'Bollinger Lower',
+                        data: [140, 138, 136, 134],
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category'
+                    },
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
