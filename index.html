@@ -1,287 +1,64 @@
-[Paste the copied code<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FRED API Data Fetcher</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        h1 {
-            color: #0066cc;
-            text-align: center;
-        }
-        .container {
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-        button {
-            background-color: #0066cc;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #0055aa;
-        }
-        #results {
-            margin-top: 20px;
-        }
-        #chart {
-            margin-top: 20px;
-            height: 400px;
-            width: 100%;
-        }
-        .loading {
-            text-align: center;
-            display: none;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>FRED Economic Data Fetcher</h1>
-        
-        <div class="form-group">
-            <label for="series-id">Series ID:</label>
-            <input type="text" id="series-id" placeholder="e.g., GDPC1, UNRATE, CPIAUCSL" value="GDPC1">
-        </div>
-        
-        <div class="form-group">
-            <label for="observation-start">Start Date:</label>
-            <input type="date" id="observation-start" value="2020-01-01">
-        </div>
-        
-        <div class="form-group">
-            <label for="observation-end">End Date:</label>
-            <input type="date" id="observation-end">
-        </div>
-        
-        <div class="form-group">
-            <label for="frequency">Frequency:</label>
-            <select id="frequency">
-                <option value="">Default</option>
-                <option value="d">Daily</option>
-                <option value="w">Weekly</option>
-                <option value="bw">Biweekly</option>
-                <option value="m">Monthly</option>
-                <option value="q">Quarterly</option>
-                <option value="sa">Semiannual</option>
-                <option value="a">Annual</option>
-            </select>
-        </div>
-        
-        <button id="fetch-data">Fetch Data</button>
-        
-        <div class="loading" id="loading">
-            <p>Loading data...</p>
-        </div>
-        
-        <div id="results"></div>
-        <div id="chart"></div>
-    </div>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script>
-        // Set today's date as the default end date
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date();
-            const formattedDate = today.toISOString().split('T')[0];
-            document.getElementById('observation-end').value = formattedDate;
-        });
+import requests
+import json
 
-        // Your FRED API key
-        const apiKey = "2f057499936072679d8843d7fce99989";  // Replace with your actual API key
-        
-        document.getElementById('fetch-data').addEventListener('click', fetchData);
-        
-        let chart;
-        
-        async function fetchData() {
-            const seriesId = document.getElementById('series-id').value.trim();
-            const startDate = document.getElementById('observation-start').value;
-            const endDate = document.getElementById('observation-end').value;
-            const frequency = document.getElementById('frequency').value;
-            
-            if (!seriesId) {
-                alert('Please enter a Series ID');
-                return;
-            }
-            
-            const resultsDiv = document.getElementById('results');
-            const loadingDiv = document.getElementById('loading');
-            const chartDiv = document.getElementById('chart');
-            
-            loadingDiv.style.display = 'block';
-            resultsDiv.innerHTML = '';
-            if (chart) {
-                chart.destroy();
-            }
-            
-            try {
-                // First, get the series title for display purposes
-                const infoUrl = `https://api.stlouisfed.org/fred/series?series_id=${seriesId}&api_key=${apiKey}&file_type=json`;
-                const infoResponse = await fetch(infoUrl);
-                const infoData = await infoResponse.json();
-                
-                if (!infoResponse.ok) {
-                    throw new Error(`API error: ${infoData.error_message || 'Unknown error'}`);
-                }
-                
-                const seriesTitle = infoData.seriess[0].title;
-                
-                // Now get the actual data
-                let url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${apiKey}&file_type=json`;
-                
-                if (startDate) {
-                    url += `&observation_start=${startDate}`;
-                }
-                if (endDate) {
-                    url += `&observation_end=${endDate}`;
-                }
-                if (frequency) {
-                    url += `&frequency=${frequency}`;
-                }
-                
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(`API error: ${data.error_message || 'Unknown error'}`);
-                }
-                
-                if (data.observations.length === 0) {
-                    resultsDiv.innerHTML = '<p>No data found for the specified parameters.</p>';
-                } else {
-                    // Create a header with series info
-                    const header = document.createElement('h2');
-                    header.textContent = seriesTitle;
-                    resultsDiv.appendChild(header);
-                    
-                    // Display data in a table
-                    const table = document.createElement('table');
-                    const thead = document.createElement('thead');
-                    const headerRow = document.createElement('tr');
-                    
-                    const dateHeader = document.createElement('th');
-                    dateHeader.textContent = 'Date';
-                    headerRow.appendChild(dateHeader);
-                    
-                    const valueHeader = document.createElement('th');
-                    valueHeader.textContent = 'Value';
-                    headerRow.appendChild(valueHeader);
-                    
-                    thead.appendChild(headerRow);
-                    table.appendChild(thead);
-                    
-                    const tbody = document.createElement('tbody');
-                    
-                    // Prepare data for chart
-                    const chartLabels = [];
-                    const chartValues = [];
-                    
-                    data.observations.forEach(obs => {
-                        const row = document.createElement('tr');
-                        
-                        const dateCell = document.createElement('td');
-                        dateCell.textContent = obs.date;
-                        row.appendChild(dateCell);
-                        
-                        const valueCell = document.createElement('td');
-                        valueCell.textContent = obs.value === '.' ? 'No data' : obs.value;
-                        row.appendChild(valueCell);
-                        
-                        tbody.appendChild(row);
-                        
-                        // Add to chart data if value is valid
-                        if (obs.value !== '.') {
-                            chartLabels.push(obs.date);
-                            chartValues.push(parseFloat(obs.value));
-                        }
-                    });
-                    
-                    table.appendChild(tbody);
-                    resultsDiv.appendChild(table);
-                    
-                    // Create a chart
-                    const ctx = document.createElement('canvas');
-                    ctx.id = 'data-chart';
-                    chartDiv.innerHTML = '';
-                    chartDiv.appendChild(ctx);
-                    
-                    chart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: chartLabels,
-                            datasets: [{
-                                label: seriesTitle,
-                                data: chartValues,
-                                borderColor: '#0066cc',
-                                backgroundColor: 'rgba(0, 102, 204, 0.1)',
-                                borderWidth: 2,
-                                fill: true,
-                                tension: 0.1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                x: {
-                                    ticks: {
-                                        maxRotation: 45,
-                                        minRotation: 45
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-            } catch (error) {
-                resultsDiv.innerHTML = `<p style="color: red">Error: ${error.message}</p>`;
-                console.error('Error fetching data:', error);
-            } finally {
-                loadingDiv.style.display = 'none';
-            }
-        }
-    </script>
-</body>
-</html> here]
+# Your FRED API Key
+# It's generally a good practice to store API keys securely,
+# for example, as environment variables, rather than hardcoding them directly in scripts,
+# especially if you plan to share or version control your code.
+API_KEY = "2f057499936072679d8843d7fce99989" # User provided API key
+
+# FRED API base URL for series observations
+BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
+
+def get_fred_series_data(series_id, api_key, file_type="json", **kwargs):
+    """
+    Fetches data for a specific series from the FRED API.
+
+    Args:
+        series_id (str): The ID of the FRED series (e.g., "GNPCA").
+        api_key (str): Your FRED API key.
+        file_type (str, optional): The desired output format. Defaults to "json".
+                                   Other options include "xml", "txt", "xls".
+        **kwargs: Additional optional parameters for the API request, such as:
+                  observation_start (str): Start date in YYYY-MM-DD format.
+                  observation_end (str): End date in YYYY-MM-DD format.
+                  units (str): "lin" (levels), "chg" (change), "ch1" (change from year ago),
+                               "pch" (percent change), "pc1" (percent change from year ago),
+                               "pca" (compounded annual rate of change),
+                               "cch" (continuously compounded rate of change),
+                               "cca" (continuously compounded annual rate of change),
+                               "log" (natural log).
+                  frequency (str): e.g., "d" (daily), "w" (weekly), "m" (monthly), "q" (quarterly), "a" (annual).
+                  limit (int): Number of results to retrieve.
+                  offset (int): Offset for pagination.
+                  sort_order (str): "asc" or "desc".
+
+    Returns:
+        dict or str: Parsed JSON data as a dictionary if file_type is "json",
+                     otherwise raw text content of the response.
+                     Returns None if an error occurs.
+    """
+    params = {
+        "series_id": series_id,
+        "api_key": api_key,
+        "file_type": file_type,
+    }
+    # Add any additional optional parameters to the request
+    params.update(kwargs)
+
+    try:
+        response = requests.get(BASE_URL, params=params)
+        response.raise_for_status()  # Raises an HTTPError for bad responses (4XX or 5XX)
+
+        if file_type == "json":
+            return response.json()  # Parses the JSON response into a Python dictionary
+        else:
+            return response.text # Returns raw text for other file types (xml, txt, etc.)
+
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        print(f"Response content: {response.content.decode()}") # Show error message from FRED
+    except requests.exceptions.ConnectionError as conn_err:
+        print(f"Connection error occurred: {conn_err}")
+    except requests.exceptions.Timeout as timeout_err:
+        print(f"Timeout error occurred: {timeout_err
