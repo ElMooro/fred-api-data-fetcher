@@ -197,3 +197,35 @@ const DataService = (() => {
 })();
 
 export default DataService;
+// NY Fed API Support - Added Thu May  8 15:59:09 UTC 2025
+// Import NY Fed Services
+import { NYFedService } from './NYFedService';
+import { transformNYFedRateData, transformNYFedTreasuryData } from '../utils/nyfedDataTransformer';
+
+// Add this to your existing fetchData method:
+/*
+  if (source === 'nyfed') {
+    // Check if the indicator is a Treasury rate
+    if (indicator.startsWith('treasury_')) {
+      const tenor = indicator.replace('treasury_', '');
+      const treasuryData = await NYFedService.fetchTreasuryYields(startDate, endDate);
+      return transformNYFedTreasuryData(treasuryData, tenor);
+    } else {
+      // Handle other rates (SOFR, EFFR, etc.)
+      let rateType;
+      switch (indicator) {
+        case 'sofr':
+          rateType = 'sofr';
+          break;
+        case 'effr':
+          rateType = 'effr';
+          break;
+        default:
+          rateType = indicator;
+      }
+      
+      const rateData = await NYFedService.fetchRates(rateType, startDate, endDate);
+      return transformNYFedRateData(rateData, rateType);
+    }
+  }
+*/

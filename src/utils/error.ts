@@ -5,86 +5,57 @@ import { ErrorType } from '../types';
  * Custom error class with type for better error handling
  */
 export class AppError extends Error {
-  name: string;
   type: ErrorType;
-  originalError: Error | null;
-
-  constructor(type: ErrorType, message?: string, originalError: Error | null = null) {
-    super(message || ERROR_MESSAGES[type] || 'Unknown error');
-    this.name = 'AppError';
+  details?: any;
+  
+  constructor(message: string, type: ErrorType = 'UNKNOWN', details?: any) {
+    super(message);
     this.type = type;
-    this.originalError = originalError;
+    this.details = details;
+    this.name = 'AppError';
+    
+    // Ensure the stack trace is preserved
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, AppError);
+    }
+  }
+  
+  /**
+   * Helper method to get a standardized error message based on error type
+   */
+  static getErrorMessage(type: ErrorType): string {
+    return ERROR_MESSAGES[type] || ERROR_MESSAGES.UNKNOWN;
+  }
+  
+  /**
+   * Convert API errors to AppError instances
+   */
+  static fromApiError(error: any): AppError {
+    if (error.response) {
+      // The request was made and the server responded with an error status
+      const status = error.response.status;
+      
+      if (status === 401 || status === 403) {
+        return new AppError(ERROR_MESSAGES.AUTHORIZATION, 'AUTHORIZATION', error.response.data);
+      } else if (status === 404) {
+        return new AppError(ERROR_MESSAGES.NOT_FOUND, 'NOT_FOUND', error.response.data);
+      } else {
+        return new AppError(ERROR_MESSAGES.API, 'API', {
+          status,
+          data: error.response.data
+        });
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      if (error.code === 'ECONNABORTED') {
+        return new AppError(ERROR_MESSAGES.TIMEOUT, 'TIMEOUT', error.request);
+      }
+      return new AppError(ERROR_MESSAGES.NETWORK, 'NETWORK', error.request);
+    }
+    
+    // Something happened in setting up the request
+    return new AppError(ERROR_MESSAGES.UNKNOWN, 'UNKNOWN', error);
   }
 }
 
-/**
- * Create a retry wrapper for async functions with exponential backoff
- * @param fn - Async function to retry
- * @param options - Retry options
- * @returns Function with retry capability
- */
-export const withRetry = <T extends (...args: any[]) => Promise<any>>(
-  fn: T, 
-  options: {
-    maxAttempts?: number;
-    backoffFactor?: number;
-    initialDelay?: number;
-  } = {}
-) => {
-  const {
-    maxAttempts = 3,
-    backoffFactor = 1.5,
-    initialDelay = 1000
-  } = options;
-  
-  return async (...args: Parameters<T>): Promise<ReturnType<T>> => {
-    let lastError;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await fn(...args);
-      } catch (error: any) {
-        lastError = error;
-        
-        // Don't retry if it's a validation error or we've reached max attempts
-        if (error instanceof AppError || attempt === maxAttempts) {
-          throw error;
-        }
-        
-        // Wait before next attempt with exponential backoff
-        const delay = initialDelay * Math.pow(backoffFactor, attempt - 1);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-    
-    // This should never execute due to the throw in the loop, but as a fallback
-    throw lastError;
-  };
-};
-
-/**
- * Debounce function to prevent excessive function calls
- * @param func - Function to debounce
- * @param wait - Wait time in milliseconds
- * @returns Debounced function
- */
-export const debounce = <T extends (...args: any[]) => any>(
-  func: T, 
-  wait = 300
-): ((...args: Parameters<T>) => void) => {
-  let timeout: NodeJS.Timeout | null = null;
-  
-  return function executedFunction(...args: Parameters<T>) {
-    const later = () => {
-      if (timeout) {
-        clearTimeout(timeout);
-        timeout = null;
-      }
-      func(...args);
-    };
-    
-    if (timeout) {
-      clearTimeout(timeout);
-    }
-    timeout = setTimeout(later, wait);
-  };
-};
+export default AppError;

@@ -1,0 +1,33 @@
+.dashboard-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  font-size: 18px;
+  color: #666;
+}
+
+.error-message {
+  padding: 15px;
+  background-color: #ffecec;
+  color: #f44336;
+  border-radius: 4px;
+  margin: 20px 0;
+}
+
+.data-container {
+  margin-top: 20px;
+}
+
+.data-summary {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 20px;
+}

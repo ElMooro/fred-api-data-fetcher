@@ -1,1 +1,232 @@
-import {DataPoint, Statistics} from "../types";export class DataService {static async fetchData(seriesId: string,frequency: string,startDate: string,endDate: string): Promise<DataPoint[]> {try {await new Promise(resolve => setTimeout(resolve, 800));return [{date: "2023-01-01", value: 105.2},{date: "2023-02-01", value: 107.5},{date: "2023-03-01", value: 106.8},].filter(point => {const date = new Date(point.date);return date >= new Date(startDate) && date <= new Date(endDate);});} catch (error) {console.error("Error fetching data:", error);throw new Error("Failed to fetch data");}}static transformData(data: DataPoint[], transformationType: string): DataPoint[] {try {if (!data || data.length === 0 || transformationType === "raw") {return [...data];}switch (transformationType) {case "mom_pct":return data.map((item, index) => {if (index === 0) return { ...item, value: 0 };const prevValue = data[index - 1].value;return {...item,value: prevValue ? (item.value - prevValue) / prevValue * 100 : 0};});default:return [...data];}} catch (error) {console.error("Error transforming data:", error);return [...data];}}static calculateStatistics(data: DataPoint[]): Statistics {try {if (!data || data.length === 0) {return {min: 0,max: 0,mean: 0,median: 0,stdDev: 0,count: 0};}const values = data.map(d => d.value).filter(v => v !== null && !isNaN(v));if (values.length === 0) {return {min: 0,max: 0,mean: 0,median: 0,stdDev: 0,count: 0};}const min = Math.min(...values);const max = Math.max(...values);const sum = values.reduce((acc, val) => acc + val, 0);const mean = sum / values.length;const sortedValues = [...values].sort((a, b) => a - b);const median = values.length % 2 === 0? (sortedValues[values.length / 2 - 1] + sortedValues[values.length / 2]) / 2: sortedValues[Math.floor(values.length / 2)];const squareDiffs = values.map(value => {const diff = value - mean;return diff * diff;});const avgSquareDiff = squareDiffs.reduce((acc, val) => acc + val, 0) / values.length;const stdDev = Math.sqrt(avgSquareDiff);return {min,max,mean,median,stdDev,count: values.length};} catch (error) {console.error("Error calculating statistics:", error);return {min: 0,max: 0,mean: 0,median: 0,stdDev: 0,count: 0,error: error instanceof Error ? error.message : "Unknown error"};}};}
+import { DataPoint, Statistics, FredApiOptions } from "../types";
+import axios from 'axios';
+
+export class DataService {
+  private apiKey: string;
+  private baseUrl: string;
+  
+  constructor(apiKey = process.env.REACT_APP_FRED_API_KEY || '') {
+    this.apiKey = apiKey;
+    this.baseUrl = 'https://api.stlouisfed.org/fred/';
+  }
+  
+  private async request(endpoint: string, params: Record<string, any> = {}): Promise<any> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const queryParams = {
+      api_key: this.apiKey,
+      file_type: 'json',
+      ...params
+    };
+    
+    try {
+      const response = await axios.get(url, { params: queryParams });
+      return response.data;
+    } catch (error) {
+      console.error(`Error calling FRED API (${endpoint}):`, error);
+      throw error;
+    }
+  }
+
+  async fetchData(
+    seriesId: string,
+    frequency: string = "",
+    startDate: string = "",
+    endDate: string = ""
+  ): Promise<DataPoint[]> {
+    try {
+      // If we have a real API key, use it
+      if (this.apiKey) {
+        const params: any = {
+          series_id: seriesId,
+        };
+        
+        if (startDate) params.observation_start = startDate;
+        if (endDate) params.observation_end = endDate;
+        
+        // Only add frequency if specified
+        if (frequency && frequency.toLowerCase() !== 'default') {
+          params.frequency = frequency.toLowerCase();
+        }
+        
+        const result = await this.request('series/observations', params);
+        
+        if (result && result.observations) {
+          return result.observations
+            .filter((obs: any) => obs.value !== ".")
+            .map((obs: any) => ({
+              date: obs.date,
+              value: parseFloat(obs.value) || 0
+            }));
+        }
+        
+        return [];
+      }
+      
+      // Fallback to mock data if no API key
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      return [
+        { date: "2023-01-01", value: 105.2 },
+        { date: "2023-02-01", value: 107.5 },
+        { date: "2023-03-01", value: 106.8 },
+        { date: "2023-04-01", value: 108.2 },
+        { date: "2023-05-01", value: 109.7 },
+        { date: "2023-06-01", value: 110.3 },
+      ].filter(point => {
+        const date = new Date(point.date);
+        return (!startDate || date >= new Date(startDate)) && 
+               (!endDate || date <= new Date(endDate));
+      });
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      throw new Error("Failed to fetch data");
+    }
+  }
+
+  // New method to fetch SOFR data directly from NY Fed
+  async fetchSOFRData(days: number = 30): Promise<DataPoint[]> {
+    try {
+      // Use the NY Fed API directly for SOFR data
+      const response = await axios.get(`https://markets.newyorkfed.org/api/rates/secured/sofr/last/${days}.json`);
+      
+      if (response.data && response.data.refRates) {
+        // Transform the NY Fed data format to our DataPoint format
+        return response.data.refRates.map((item: any) => ({
+          date: item.effectiveDate, // Format: YYYY-MM-DD
+          value: item.percentRate,
+          rawValue: item.percentRate,
+          volume: item.volumeInBillions,
+          percentiles: {
+            p1: item.percentPercentile1,
+            p25: item.percentPercentile25,
+            p75: item.percentPercentile75,
+            p99: item.percentPercentile99
+          }
+        }));
+      }
+      
+      return [];
+    } catch (error) {
+      console.error("Error fetching SOFR data from NY Fed:", error);
+      // Try FRED as fallback
+      try {
+        console.log("Trying FRED as fallback for SOFR data...");
+        return await this.fetchData('SOFR', 'Daily', '', '');
+      } catch (fallbackError) {
+        console.error("Fallback to FRED also failed:", fallbackError);
+        return [];
+      }
+    }
+  }
+  
+  // Method to get other NY Fed rates like EFFR
+  async fetchNYFedRate(rateType: string, days: number = 30): Promise<DataPoint[]> {
+    try {
+      // Valid rateTypes: 'sofr', 'effr', 'obfr', 'tgcr', 'bgcr'
+      const endpoint = rateType.toLowerCase() === 'effr' ? 'unsecured/effr' : `secured/${rateType.toLowerCase()}`;
+      const response = await axios.get(`https://markets.newyorkfed.org/api/rates/${endpoint}/last/${days}.json`);
+      
+      if (response.data && response.data.refRates) {
+        return response.data.refRates.map((item: any) => ({
+          date: item.effectiveDate,
+          value: item.percentRate,
+          volume: item.volumeInBillions || null
+        }));
+      }
+      
+      return [];
+    } catch (error) {
+      console.error(`Error fetching ${rateType} data from NY Fed:`, error);
+      throw error;
+    }
+  }
+
+  static transformData(data: DataPoint[], transformationType: string): DataPoint[] {
+    try {
+      if (!data || data.length === 0 || transformationType === "raw") {
+        return [...data];
+      }
+
+      switch (transformationType) {
+        case "mom_pct":
+          return data.map((item, index) => {
+            if (index === 0) return { ...item, value: 0 };
+            const prevValue = data[index - 1].value;
+            return {
+              ...item,
+              value: prevValue ? (item.value - prevValue) / prevValue * 100 : 0
+            };
+          });
+        default:
+          return [...data];
+      }
+    } catch (error) {
+      console.error("Error transforming data:", error);
+      return [...data];
+    }
+  }
+
+  static calculateStatistics(data: DataPoint[]): Statistics {
+    try {
+      if (!data || data.length === 0) {
+        return {
+          min: 0,
+          max: 0,
+          mean: 0,
+          median: 0,
+          stdDev: 0,
+          count: 0
+        };
+      }
+
+      const values = data.map(d => d.value).filter(v => v !== null && !isNaN(v));
+      if (values.length === 0) {
+        return {
+          min: 0,
+          max: 0,
+          mean: 0,
+          median: 0,
+          stdDev: 0,
+          count: 0
+        };
+      }
+
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const sum = values.reduce((acc, val) => acc + val, 0);
+      const mean = sum / values.length;
+      const sortedValues = [...values].sort((a, b) => a - b);
+      const median = values.length % 2 === 0
+        ? (sortedValues[values.length / 2 - 1] + sortedValues[values.length / 2]) / 2
+        : sortedValues[Math.floor(values.length / 2)];
+
+      const squareDiffs = values.map(value => {
+        const diff = value - mean;
+        return diff * diff;
+      });
+      const avgSquareDiff = squareDiffs.reduce((acc, val) => acc + val, 0) / values.length;
+      const stdDev = Math.sqrt(avgSquareDiff);
+
+      return {
+        min,
+        max,
+        mean,
+        median,
+        stdDev,
+        count: values.length
+      };
+    } catch (error) {
+      console.error("Error calculating statistics:", error);
+      return {
+        min: 0,
+        max: 0,
+        mean: 0,
+        median: 0,
+        stdDev: 0,
+        count: 0,
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+}

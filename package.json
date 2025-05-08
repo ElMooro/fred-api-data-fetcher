@@ -59,5 +59,8 @@
     "prettier": "^3.5.3",
     "tailwindcss": "^3.4.17"
   },
-  "homepage": "https://elmooro.github.io/fred-api-data-fetcher"
+  "homepage": "https://elmooro.github.io/fred-api-data-fetcher",
+  "compilerOptions": {
+    "skipLibCheck": "true"
+  }
 }

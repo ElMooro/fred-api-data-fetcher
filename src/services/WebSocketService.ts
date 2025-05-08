@@ -1,1 +1,127 @@
-import {LiveData, ConnectionStatus} from "../types";type MessageHandler = (data: any) => void;type StatusHandler = (status: ConnectionStatus) => void;export class WebSocketService {private static instance: WebSocketService;private socket: WebSocket | null = null;private isConnected: boolean = false;private reconnectTimeout: NodeJS.Timeout | null = null;private reconnectAttempts: number = 0;private messageHandlers: Set<MessageHandler> = new Set();private connectionStatusHandlers: Set<StatusHandler> = new Set();private readonly MAX_RECONNECT_ATTEMPTS: number = 5;private readonly RECONNECT_DELAY: number = 2000;private constructor() {}public static getInstance(): WebSocketService {if (!WebSocketService.instance) {WebSocketService.instance = new WebSocketService();}return WebSocketService.instance;}private updateConnectionStatus(status: ConnectionStatus): void {this.isConnected = status === "Connected";this.connectionStatusHandlers.forEach(handler => handler(status));}public connect(): void {if (this.socket) {return;}try {this.updateConnectionStatus("Connecting...");setTimeout(() => {this.updateConnectionStatus("Connected");this.reconnectAttempts = 0;const interval = setInterval(() => {if (!this.isConnected) {clearInterval(interval);return;}const mockData = {type: "update",timestamp: new Date().toISOString(),data: {UNRATE: {value: (4 + Math.random() * 2).toFixed(2),change: (Math.random() * 0.4 - 0.2).toFixed(2)},GDP: {value: (21500 + Math.random() * 500).toFixed(2),change: (Math.random() * 1 - 0.3).toFixed(2)},FEDFUNDS: {value: (3 + Math.random() * 1).toFixed(2),change: (Math.random() * 0.2 - 0.1).toFixed(2)}}};this.messageHandlers.forEach(handler => handler(mockData));}, 5000);}, 1000);} catch (error) {console.error("WebSocket connection error", error);this.updateConnectionStatus("Connection Error");this.reconnect();}}public disconnect(): void {this.socket = null;if (this.reconnectTimeout) {clearTimeout(this.reconnectTimeout);this.reconnectTimeout = null;}this.updateConnectionStatus("Disconnected");}private reconnect(): void {if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {this.updateConnectionStatus("Reconnect Failed");return;}if (this.reconnectTimeout) {clearTimeout(this.reconnectTimeout);}this.reconnectAttempts++;this.updateConnectionStatus("Connecting...");this.reconnectTimeout = setTimeout(() => {this.socket = null;this.connect();}, this.RECONNECT_DELAY * this.reconnectAttempts);}public onMessage(handler: MessageHandler): () => void {this.messageHandlers.add(handler);return () => this.messageHandlers.delete(handler);}public onConnectionStatusChange(handler: StatusHandler): () => void {this.connectionStatusHandlers.add(handler);handler(this.isConnected ? "Connected" : "Disconnected");return () => this.connectionStatusHandlers.delete(handler);}public isConnectedStatus(): boolean {return this.isConnected;}}
+import { LiveData, ConnectionStatus } from "../types";
+
+type MessageHandler = (data: any) => void;
+type StatusHandler = (status: ConnectionStatus) => void;
+
+export class WebSocketService {
+  private static instance: WebSocketService;
+  private socket: WebSocket | null = null;
+  private isConnected: boolean = false;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private reconnectAttempts: number = 0;
+  private messageHandlers: Set<MessageHandler> = new Set();
+  private connectionStatusHandlers: Set<StatusHandler> = new Set();
+  private readonly MAX_RECONNECT_ATTEMPTS: number = 5;
+  private readonly RECONNECT_DELAY: number = 2000;
+
+  private constructor() {}
+
+  public static getInstance(): WebSocketService {
+    if (!WebSocketService.instance) {
+      WebSocketService.instance = new WebSocketService();
+    }
+    return WebSocketService.instance;
+  }
+
+  private updateConnectionStatus(status: ConnectionStatus): void {
+    this.isConnected = status === "Connected";
+    this.connectionStatusHandlers.forEach(handler => handler(status));
+  }
+
+  public connect(): void {
+    if (this.socket) {
+      return;
+    }
+
+    try {
+      this.updateConnectionStatus("Connecting...");
+      
+      // Mock WebSocket connection for development
+      setTimeout(() => {
+        this.updateConnectionStatus("Connected");
+        this.reconnectAttempts = 0;
+        
+        const interval = setInterval(() => {
+          if (!this.isConnected) {
+            clearInterval(interval);
+            return;
+          }
+          
+          const mockData = {
+            type: "update",
+            timestamp: new Date().toISOString(),
+            data: {
+              UNRATE: {
+                value: (4 + Math.random() * 2).toFixed(2),
+                change: (Math.random() * 0.4 - 0.2).toFixed(2)
+              },
+              GDP: {
+                value: (21500 + Math.random() * 500).toFixed(2),
+                change: (Math.random() * 1 - 0.3).toFixed(2)
+              },
+              FEDFUNDS: {
+                value: (3 + Math.random() * 1).toFixed(2),
+                change: (Math.random() * 0.2 - 0.1).toFixed(2)
+              }
+            }
+          };
+          
+          this.messageHandlers.forEach(handler => handler(mockData));
+        }, 5000);
+      }, 1000);
+    } catch (error) {
+      console.error("WebSocket connection error", error);
+      this.updateConnectionStatus("Connection Error");
+      this.reconnect();
+    }
+  }
+
+  public disconnect(): void {
+    this.socket = null;
+    
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    
+    this.updateConnectionStatus("Disconnected");
+  }
+
+  private reconnect(): void {
+    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+      this.updateConnectionStatus("Reconnect Failed");
+      return;
+    }
+    
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+    
+    this.reconnectAttempts++;
+    this.updateConnectionStatus("Connecting...");
+    
+    this.reconnectTimeout = setTimeout(() => {
+      this.socket = null;
+      this.connect();
+    }, this.RECONNECT_DELAY * this.reconnectAttempts);
+  }
+
+  public onMessage(handler: MessageHandler): () => void {
+    this.messageHandlers.add(handler);
+    return () => this.messageHandlers.delete(handler);
+  }
+
+  public onConnectionStatusChange(handler: StatusHandler): () => void {
+    this.connectionStatusHandlers.add(handler);
+    handler(this.isConnected ? "Connected" : "Disconnected");
+    return () => this.connectionStatusHandlers.delete(handler);
+  }
+
+  public isConnectedStatus(): boolean {
+    return this.isConnected;
+  }
+}
+
+// Create default export for compatibility
+const webSocketServiceInstance = WebSocketService.getInstance();
+export default webSocketServiceInstance;

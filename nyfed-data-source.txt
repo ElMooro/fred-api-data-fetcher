@@ -1,0 +1,7 @@
+// Update your financial.ts to include this data source:
+import { NYFED_DATA_SOURCE } from './nyfed';
+
+export const DATA_SOURCES = {
+  // Your existing data sources...
+  NY_FED: NYFED_DATA_SOURCE,
+};
