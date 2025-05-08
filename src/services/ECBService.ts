@@ -1,0 +1,256 @@
+import axios from 'axios';
+import { DataPoint } from '../types';
+import { AppError } from '../utils/error';
+
+/**
+ * Service for accessing European Central Bank (ECB) Statistical Data Warehouse API
+ */
+export class ECBService {
+  private baseUrl: string = 'https://sdw-wsrest.ecb.europa.eu/service';
+  
+  /**
+   * Fetch ECB key interest rates
+   * @param startPeriod Start date in YYYY-MM-DD format
+   * @param endPeriod End date in YYYY-MM-DD format
+   * @returns Array of DataPoints with interest rate values
+   */
+  async fetchKeyInterestRates(startPeriod: string = '', endPeriod: string = ''): Promise<DataPoint[]> {
+    try {
+      // If no dates provided, get last 5 years of data
+      if (!startPeriod) {
+        const today = new Date();
+        const fiveYearsAgo = new Date();
+        fiveYearsAgo.setFullYear(today.getFullYear() - 5);
+        startPeriod = fiveYearsAgo.toISOString().split('T')[0];
+        endPeriod = today.toISOString().split('T')[0];
+      }
+      
+      // ECB API parameters
+      const params = {
+        startPeriod,
+        endPeriod,
+        format: 'jsondata'
+      };
+      
+      // Fetch the Main Refinancing Operations rate (MRO)
+      const mroUrl = `${this.baseUrl}/data/FM/D.U2.EUR.4F.KR.MRR.COL`;
+      const mroResponse = await axios.get(mroUrl, { params });
+      
+      if (mroResponse.data && mroResponse.data.dataSets && mroResponse.data.dataSets.length > 0) {
+        const mroData = this.parseECBData(mroResponse.data, 'Main Refinancing Operations');
+        
+        // Fetch the Deposit Facility rate (DF)
+        const dfUrl = `${this.baseUrl}/data/FM/D.U2.EUR.4F.KR.DFR`;
+        const dfResponse = await axios.get(dfUrl, { params });
+        const dfData = this.parseECBData(dfResponse.data, 'Deposit Facility');
+        
+        // Fetch the Marginal Lending Facility rate (MLF)
+        const mlfUrl = `${this.baseUrl}/data/FM/D.U2.EUR.4F.KR.MLFR`;
+        const mlfResponse = await axios.get(mlfUrl, { params });
+        const mlfData = this.parseECBData(mlfResponse.data, 'Marginal Lending Facility');
+        
+        // Combine all data
+        const combinedData = [...mroData, ...dfData, ...mlfData];
+        
+        // Group by date
+        const groupedData: { [key: string]: any } = {};
+        combinedData.forEach(item => {
+          if (!groupedData[item.date]) {
+            groupedData[item.date] = {
+              date: item.date,
+              MRO: null,
+              DF: null,
+              MLF: null
+            };
+          }
+          
+          if (item.metadata?.type === 'Main Refinancing Operations') {
+            groupedData[item.date].MRO = item.value;
+          } else if (item.metadata?.type === 'Deposit Facility') {
+            groupedData[item.date].DF = item.value;
+          } else if (item.metadata?.type === 'Marginal Lending Facility') {
+            groupedData[item.date].MLF = item.value;
+          }
+        });
+        
+        // Convert to array and sort by date
+        const result = Object.values(groupedData)
+          .map(item => ({
+            date: item.date,
+            value: item.MRO, // Use MRO as the primary value
+            metadata: {
+              MRO: item.MRO,
+              DF: item.DF,
+              MLF: item.MLF,
+              description: 'ECB Key Interest Rates'
+            }
+          }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+        return result;
+      }
+      
+      throw new AppError('No data returned from ECB API', 'API');
+    } catch (error) {
+      console.error('Error fetching ECB interest rates:', error);
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
+      throw AppError.fromApiError(error);
+    }
+  }
+  
+  /**
+   * Fetch Euro Area inflation (HICP) data
+   * @param startPeriod Start date in YYYY-MM-DD format
+   * @param endPeriod End date in YYYY-MM-DD format
+   * @returns Array of DataPoints with inflation values
+   */
+  async fetchInflation(startPeriod: string = '', endPeriod: string = ''): Promise<DataPoint[]> {
+    try {
+      // If no dates provided, get last 5 years of data
+      if (!startPeriod) {
+        const today = new Date();
+        const fiveYearsAgo = new Date();
+        fiveYearsAgo.setFullYear(today.getFullYear() - 5);
+        startPeriod = fiveYearsAgo.toISOString().split('T')[0];
+        endPeriod = today.toISOString().split('T')[0];
+      }
+      
+      // ECB API parameters
+      const params = {
+        startPeriod,
+        endPeriod,
+        format: 'jsondata'
+      };
+      
+      // Fetch HICP (Harmonized Index of Consumer Prices) year-on-year rate
+      const url = `${this.baseUrl}/data/ICP/M.U2.Y.000000.3.ANR`;
+      const response = await axios.get(url, { params });
+      
+      if (response.data && response.data.dataSets && response.data.dataSets.length > 0) {
+        return this.parseECBData(response.data, 'Euro Area Inflation (HICP)');
+      }
+      
+      throw new AppError('No inflation data returned from ECB API', 'API');
+    } catch (error) {
+      console.error('Error fetching ECB inflation data:', error);
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
+      throw AppError.fromApiError(error);
+    }
+  }
+  
+  /**
+   * Fetch Euro Area GDP growth data
+   * @param startPeriod Start date in YYYY-MM-DD format
+   * @param endPeriod End date in YYYY-MM-DD format
+   * @returns Array of DataPoints with GDP growth values
+   */
+  async fetchGDPGrowth(startPeriod: string = '', endPeriod: string = ''): Promise<DataPoint[]> {
+    try {
+      // If no dates provided, get last 5 years of data
+      if (!startPeriod) {
+        const today = new Date();
+        const fiveYearsAgo = new Date();
+        fiveYearsAgo.setFullYear(today.getFullYear() - 5);
+        startPeriod = fiveYearsAgo.toISOString().split('T')[0];
+        endPeriod = today.toISOString().split('T')[0];
+      }
+      
+      // ECB API parameters
+      const params = {
+        startPeriod,
+        endPeriod,
+        format: 'jsondata'
+      };
+      
+      // Fetch GDP growth quarter-on-quarter rate
+      const url = `${this.baseUrl}/data/MNA/Q.Y.I8.W2.S1.S1.B.B1GQ._Z._Z._Z.EUR.LR.GY`;
+      const response = await axios.get(url, { params });
+      
+      if (response.data && response.data.dataSets && response.data.dataSets.length > 0) {
+        return this.parseECBData(response.data, 'Euro Area GDP Growth');
+      }
+      
+      throw new AppError('No GDP growth data returned from ECB API', 'API');
+    } catch (error) {
+      console.error('Error fetching ECB GDP growth data:', error);
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
+      throw AppError.fromApiError(error);
+    }
+  }
+  
+  /**
+   * Helper method to parse ECB API data into DataPoint format
+   * @param data Raw data from ECB API
+   * @param type Type of data (for metadata)
+   * @returns Array of DataPoints
+   */
+  private parseECBData(data: any, type: string): DataPoint[] {
+    try {
+      const result: DataPoint[] = [];
+      
+      if (!data.dataSets || !data.dataSets[0] || !data.dataSets[0].series || !data.structure) {
+        return result;
+      }
+      
+      const series = data.dataSets[0].series;
+      const dimensions = data.structure.dimensions.observation || [];
+      
+      // Get time dimension (typically the first dimension)
+      const timeDimension = dimensions.find((dim: any) => dim.id === 'TIME_PERIOD') || dimensions[0];
+      
+      // Loop through all series in the dataset
+      Object.keys(series).forEach(seriesKey => {
+        const observations = series[seriesKey].observations;
+        
+        // Loop through all observations in the series
+        Object.keys(observations).forEach(obsKey => {
+          const obsIndex = parseInt(obsKey);
+          const value = observations[obsKey][0]; // First element is usually the value
+          
+          if (timeDimension && timeDimension.values && timeDimension.values[obsIndex]) {
+            const period = timeDimension.values[obsIndex].id || timeDimension.values[obsIndex];
+            
+            // Convert period to ISO date if needed (ECB often uses YYYY-MM for monthly data)
+            let date = period;
+            if (period.length === 7 && period.includes('-')) {
+              // Monthly data like "2023-05"
+              date = `${period}-01`; // Set to first day of month
+            } else if (period.length === 4) {
+              // Yearly data like "2023"
+              date = `${period}-01-01`; // Set to first day of year
+            }
+            
+            result.push({
+              date,
+              value: parseFloat(value) || 0,
+              metadata: {
+                type,
+                period,
+                rawValue: value
+              }
+            });
+          }
+        });
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('Error parsing ECB data:', error);
+      return [];
+    }
+  }
+}
+
+export default ECBService;

@@ -1,0 +1,107 @@
+.ecb-panel {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.ecb-panel h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.ecb-panel h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #555;
+  font-size: 1.1rem;
+}
+
+.ecb-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.highlight-card {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
+}
+
+.rate-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #1F618D;
+  margin: 8px 0;
+}
+
+.inflation-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin: 8px 0;
+}
+
+.inflation-value.normal {
+  color: #27AE60;
+}
+
+.inflation-value.high {
+  color: #C0392B;
+}
+
+.inflation-value.negative {
+  color: #5D6D7E;
+}
+
+.date {
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.ecb-chart {
+  margin-bottom: 24px;
+}
+
+.ecb-info {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.ecb-info p {
+  margin-top: 8px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.ecb-info a {
+  color: #1F618D;
+  text-decoration: none;
+}
+
+.ecb-info a:hover {
+  text-decoration: underline;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: #666;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 16px 0;
+}

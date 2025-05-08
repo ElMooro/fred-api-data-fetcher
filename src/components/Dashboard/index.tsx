@@ -3,6 +3,7 @@ import { DataPoint } from '../../types';
 import { DataService } from '../../services/DataService';
 import SOFRPanel from './SOFRPanel';
 import BEAPanel from './BEAPanel';
+import ECBPanel from './ECBPanel';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
@@ -33,31 +34,44 @@ const Dashboard: React.FC = () => {
   
   return (
     <div className="dashboard-container">
-      <h1>Economic Data Dashboard</h1>
+      <h1>Global Economic Data Dashboard</h1>
       
-      {/* Add the BEA Panel */}
-      <BEAPanel years={5} />
+      <div className="dashboard-section">
+        <h2 className="section-title">United States</h2>
+        
+        {/* BEA Panel (US GDP) */}
+        <BEAPanel years={5} />
+        
+        {/* SOFR Panel (US Rates) */}
+        <SOFRPanel days={30} />
+      </div>
       
-      {/* Add the SOFR Panel */}
-      <SOFRPanel days={30} />
+      <div className="dashboard-section">
+        <h2 className="section-title">Europe</h2>
+        
+        {/* ECB Panel (European Data) */}
+        <ECBPanel years={5} />
+      </div>
       
-      {isLoading && <div className="loading">Loading data...</div>}
+      {isLoading && <div className="loading">Loading additional data...</div>}
       
       {error && <div className="error-message">{error}</div>}
       
       {!isLoading && !error && (
-        <div className="data-container">
-          <h2>Additional Economic Indicators</h2>
+        <div className="dashboard-section">
+          <h2 className="section-title">Additional Indicators</h2>
           
-          <div className="data-summary">
-            <h3>Data Summary</h3>
-            <p>Number of data points: {data.length}</p>
-            {data.length > 0 && (
-              <>
-                <p>Latest value: {data[data.length - 1].value}</p>
-                <p>Date: {data[data.length - 1].date}</p>
-              </>
-            )}
+          <div className="data-container">
+            <h3>FRED Economic Data</h3>
+            <div className="data-summary">
+              <p>Number of indicators available: {data.length}</p>
+              {data.length > 0 && (
+                <>
+                  <p>Latest value: {data[data.length - 1].value}</p>
+                  <p>Date: {data[data.length - 1].date}</p>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
