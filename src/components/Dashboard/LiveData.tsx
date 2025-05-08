@@ -1,165 +1,123 @@
 import React, { useState, useEffect } from 'react';
-import { LiveData, ConnectionStatus } from '../../types';
+import { LiveData, ConnectionStatus, LiveDataPoint, Indicator } from '../../types';
 import { DATA_SOURCES } from '../../constants/financial';
-import WebSocketService from '../../services/WebSocketService';
+import { WebSocketService } from '../../services/WebSocketService';
 
 interface LiveDataTabProps {
   // Props can be added as needed
 }
 
 const LiveDataTab: React.FC<LiveDataTabProps> = () => {
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('Disconnected');
   const [liveData, setLiveData] = useState<LiveData>({});
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('Disconnected');
 
-  // Connect to WebSocket for live data
   useEffect(() => {
+    // Connect to WebSocket when component mounts
+    WebSocketService.initialize('wss://your-websocket-endpoint.com');
+
+    // Subscribe to connection status updates
     const unsubscribeStatus = WebSocketService.onConnectionStatusChange(setConnectionStatus);
     
-    const unsubscribeMessage = WebSocketService.onMessage(data => {
-      if (data && data.data) {
-        setLiveData(prev => ({
-          ...prev,
-          ...data.data,
-          lastUpdated: data.timestamp
-        }));
+    // Subscribe to data messages
+    const unsubscribeMessage = WebSocketService.onMessage((data: LiveData) => {
+      if (data) {
+        // Simplify the approach - avoid spreading data.data directly
+        setLiveData(prev => {
+          const newData = { ...prev };
+          
+          // Add lastUpdated timestamp
+          newData.lastUpdated = new Date().toISOString();
+          
+          // Process data safely
+          if (data.data && typeof data.data === 'object') {
+            // Process data fields individually
+            Object.entries(data.data).forEach(([key, value]) => {
+              if (value && typeof value === 'object') {
+                newData[key] = value;
+              }
+            });
+          }
+          
+          return newData;
+        });
       }
     });
-    
+
+    // Cleanup on unmount
     return () => {
       unsubscribeStatus();
       unsubscribeMessage();
+      WebSocketService.closeConnection();
     };
   }, []);
 
-  // WebSocket connection management
-  const connectWebSocket = () => {
-    WebSocketService.connect();
+  // Function to get the display name from DATA_SOURCES
+  const getDisplayName = (key: string): string => {
+    const sourceData = DATA_SOURCES[key];
+    // Check if sourceData exists and has at least one element
+    if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {
+      // Now we know sourceData[0] is an Indicator object, not a string
+      return sourceData[0].name || key; // Use the name property of the Indicator
+    }
+    return key; // Fallback to the key itself
   };
 
-  const disconnectWebSocket = () => {
-    WebSocketService.disconnect();
+  // Function to safely get value from LiveDataPoint or string
+  const getValue = (item: LiveDataPoint | string | undefined): string => {
+    if (!item) return 'N/A';
+    if (typeof item === 'string') return item;
+    return item.value || 'N/A';
+  };
+
+  // Function to safely get change from LiveDataPoint or string
+  const getChange = (item: LiveDataPoint | string | undefined): string => {
+    if (!item) return 'N/A';
+    if (typeof item === 'string') return '';
+    return item.change || 'N/A';
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6" role="tabpanel">
-      <h2 className="text-xl font-semibold mb-4">Live Data Feed</h2>
-      <div className="mb-6">
-        <div className="flex items-center gap-4 mb-4">
-          <p className="text-sm font-medium">
-            Status: <span className={`font-semibold ${connectionStatus === 'Connected' ? 'text-green-600' : 'text-red-600'}`}>{connectionStatus}</span>
-          </p>
-          {connectionStatus !== 'Connected' ? (
-            <button
-              onClick={connectWebSocket}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm transition duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Connect to WebSocket
-            </button>
-          ) : (
-            <button
-              onClick={disconnectWebSocket}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm transition duration-150 focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              Disconnect
-            </button>
-          )}
-        </div>
-        
-        {/* Live data display */}
-        {connectionStatus === 'Connected' && Object.keys(liveData).length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {Object.entries(liveData)
-              .filter(([key]) => key !== 'lastUpdated')
-              .map(([key, data]) => {
-                const indicator = Object.values(DATA_SOURCES)
-                  .flat()
-                  .find(ind => ind.id === key);
-                
-                const name = indicator?.name || key;
-                const unit = indicator?.unit || '';
-                
-                return (
-                  <div key={key} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <div className="flex justify-between mb-2">
-                      <h3 className="font-medium">{name}</h3>
-                      <span 
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          parseFloat(data.change) >= 0 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {parseFloat(data.change) >= 0 ? '+' : ''}{data.change}
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold">
-                      {data.value}{unit.includes('Percent') ? '%' : ''}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Refreshes automatically
-                    </p>
-                  </div>
-                );
-              })}
-          </div>
-        )}
-        
-        {connectionStatus === 'Connected' && Object.keys(liveData).length === 0 && (
-          <div className="text-center p-6 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">Waiting for data updates...</p>
-          </div>
-        )}
-        
-        {connectionStatus !== 'Connected' && (
-          <div className="text-center p-6 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">Connect to WebSocket to receive live updates</p>
-          </div>
-        )}
-        
-        <div className="p-4 bg-gray-50 rounded mt-6">
-          <h3 className="text-lg font-medium mb-2">Fault-Tolerant WebSocket Implementation</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            This implementation demonstrates a production-grade fault-tolerant WebSocket connection with automatic 
-            reconnection and partial data handling. If any data source fails, the system continues to display 
-            available data while attempting recovery.
-          </p>
-          <div className="bg-gray-800 text-gray-200 p-3 rounded font-mono text-xs overflow-x-auto">
-            <pre>{`// Fault-tolerant WebSocket client implementation
-class WebSocketClient {
-  constructor(url, options = {}) {
-    this.url = url;
-    this.options = {
-      reconnectInterval: 2000,
-      reconnectAttempts: 10,
-      connectionTimeout: 5000,
-      heartbeatInterval: 30000,
-      ...options
-    };
-    
-    this.reconnectCount = 0;
-    this.lastHeartbeat = null;
-    this.heartbeatTimer = null;
-    this.connectionTimer = null;
-    
-    this.handlers = {
-      message: new Set(),
-      open: new Set(),
-      close: new Set(),
-      error: new Set()
-    };
-    
-    this.sourceStatus = new Map(); // Track individual data source status
-    
-    this.connect();
-  }
-  
-  // Rest of implementation in WebSocketService.ts
-}`}</pre>
-          </div>
-        </div>
+    <div className="live-data-tab">
+      <div className="status-indicator">
+        Connection: <span className={`status-${connectionStatus.toLowerCase().replace(/\s+/g, '-').replace(/\.\.\./g, '')}`}>{connectionStatus}</span>
       </div>
+      
+      <div className="live-data-grid">
+        <div className="grid-header">
+          <div>Source</div>
+          <div>Value</div>
+          <div>Change</div>
+        </div>
+        
+        {Object.keys(DATA_SOURCES).map(key => (
+          <div key={key} className="grid-row">
+            <div>{getDisplayName(key)}</div>
+            <div>{getValue(liveData[key])}</div>
+            <div className={getChangeClass(getChange(liveData[key]))}>
+              {getChange(liveData[key])}
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {liveData.lastUpdated && (
+        <div className="last-updated">
+          Last updated: {new Date(liveData.lastUpdated as string).toLocaleString()}
+        </div>
+      )}
     </div>
   );
+};
+
+// Helper function to determine CSS class based on change value
+const getChangeClass = (change?: string): string => {
+  if (!change) return '';
+  
+  const numericChange = parseFloat(change);
+  if (isNaN(numericChange)) return '';
+  
+  return numericChange > 0 ? 'positive-change' : 
+         numericChange < 0 ? 'negative-change' : '';
 };
 
 export default LiveDataTab;

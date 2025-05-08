@@ -218,7 +218,10 @@ export const ERROR_TYPES: Record<ErrorType, ErrorType> = {
   NETWORK_ERROR: 'NETWORK_ERROR',
   API_ERROR: 'API_ERROR',
   GENERAL_ERROR: 'GENERAL_ERROR',
-  DATA_SOURCE_ERROR: 'DATA_SOURCE_ERROR'
+  DATA_SOURCE_ERROR: 'DATA_SOURCE_ERROR',
+  FETCH_ERROR: 'FETCH_ERROR',
+  PARSE_ERROR: 'PARSE_ERROR',
+  UNKNOWN_ERROR: 'UNKNOWN_ERROR'
 };
 
 // Error messages - Centralized for easier localization
@@ -226,10 +229,14 @@ export const ERROR_MESSAGES: Record<ErrorType, string> = {
   INVALID_DATE_RANGE: "Invalid date range. Please ensure start date is before end date.",
   INVALID_DATE_FORMAT: "Invalid date format. Please use YYYY-MM-DD format.",
   NO_DATA_RETURNED: "No data available for the selected parameters.",
-  DUPLICATE_WATCHLIST: "This indicator is already in your watchlist.",
-  TRANSFORMATION_ERROR: "Error applying transformation. Reverting to raw data.",
-  NETWORK_ERROR: "Network connection error. Please try again.",
-  API_ERROR: "API error. Some data sources may be unavailable.",
-  GENERAL_ERROR: "An error occurred. Please try again.",
-  DATA_SOURCE_ERROR: "Error with data source. Some indicators may be unavailable."
+  DUPLICATE_WATCHLIST: "This item already exists in your watchlist.",
+  TRANSFORMATION_ERROR: "An error occurred while transforming data.",
+  NETWORK_ERROR: "A network error occurred. Please check your connection and try again.",
+  API_ERROR: "An error occurred while fetching data from the API.",
+  GENERAL_ERROR: "An unexpected error occurred. Please try again later.",
+  DATA_SOURCE_ERROR: "An error occurred with the data source.",
+  // Added missing properties:
+  FETCH_ERROR: "Failed to fetch data. Please check your network or try again later.",
+  PARSE_ERROR: "Failed to parse data. The received data might be corrupted or in an unexpected format.",
+  UNKNOWN_ERROR: "An unknown error occurred. Please contact support if the issue persists."
 };

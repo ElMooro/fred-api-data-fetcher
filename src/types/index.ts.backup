@@ -66,51 +66,21 @@ export interface TimeFrame {
 
 // Change FinancialCrisis from type to interface
 export interface FinancialCrisis {
-  id?: string;
+  id: string;
   name: string;
-  date?: string;         /* Added date property as optional */
-  startDate?: string;    /* Made startDate optional */
-  endDate?: string;      /* Made endDate optional */
+  startDate: string;
+  endDate: string;
   description: string;
-  severity?: string;     /* Added severity property as optional */
 }
 
 // Change Transformation from string literal type to string for flexibility
-export interface Transformation {
-  id: string;
-  name: string;
-  description: string;
-  requiresHistory?: boolean;
-  historyPeriod?: string;  // For time-based transformations
-  resultUnit?: string;      // For specifying the unit of the result (e.g., "percent")
-}
+export type Transformation = string;
 
 // Define Indicator as string
-export interface Indicator {
-  id: string;
-  name: string;
-  frequency: string;
-  unit: string;
-  description: string;
-  baseValue?: number;
-  volatility?: number;
-  trend?: number;
-}
+export type Indicator = string;
 
 // Change ErrorType from enum to type with string literals to match usage in constants
 export type ErrorType = 
-  'INVALID_DATE_RANGE' | 
-  'INVALID_DATE_FORMAT' | 
-  'NO_DATA_RETURNED' | 
-  'DUPLICATE_WATCHLIST' | 
-  'TRANSFORMATION_ERROR' | 
-  'NETWORK_ERROR' | 
-  'API_ERROR' | 
-  'GENERAL_ERROR' | 
-  'DATA_SOURCE_ERROR' |
-  'FETCH_ERROR' |      // Added FETCH_ERROR
-  'PARSE_ERROR' |      // Added PARSE_ERROR
-  'UNKNOWN_ERROR';     // Added UNKNOWN_ERROR
   'INVALID_DATE_RANGE' | 
   'INVALID_DATE_FORMAT' | 
   'NO_DATA_RETURNED' | 
