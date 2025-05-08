@@ -1,0 +1,178 @@
+import axios from 'axios';
+import { DataPoint } from '../types';
+import { AppError } from '../utils/error';
+
+export class BLSService {
+  private apiKey: string;
+  
+  constructor(apiKey = process.env.REACT_APP_BLS_API_KEY || '') {
+    this.apiKey = apiKey;
+  }
+  
+  /**
+   * Fetch data from BLS API
+   * @param seriesId BLS series ID
+   * @param startYear Start year (YYYY)
+   * @param endYear End year (YYYY)
+   * @returns Array of DataPoints
+   */
+  async fetchSeries(seriesId: string, startYear: string = '', endYear: string = ''): Promise<DataPoint[]> {
+    try {
+      // If no years provided, get last 5 years
+      if (!startYear || !endYear) {
+        const currentYear = new Date().getFullYear();
+        endYear = currentYear.toString();
+        startYear = (currentYear - 5).toString();
+      }
+      
+      const payload = {
+        seriesid: [seriesId],
+        startyear: startYear,
+        endyear: endYear,
+        registrationkey: this.apiKey
+      };
+      
+      const response = await axios.post(
+        'https://api.bls.gov/publicAPI/v2/timeseries/data/',
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (response.data && response.data.status === 'REQUEST_SUCCEEDED' && 
+          response.data.Results && response.data.Results.series && 
+          response.data.Results.series.length > 0) {
+        
+        const series = response.data.Results.series[0];
+        
+        // Transform BLS data to DataPoint format
+        return series.data.map((item: any) => {
+          // Convert period (e.g., 'M01') to month number
+          const month = parseInt(item.period.substring(1));
+          // Create date in YYYY-MM-DD format (using first day of month)
+          const date = `${item.year}-${month.toString().padStart(2, '0')}-01`;
+          
+          return {
+            date,
+            value: parseFloat(item.value),
+            rawValue: parseFloat(item.value),
+            metadata: {
+              year: item.year,
+              period: item.period,
+              periodName: item.periodName,
+              seriesId: seriesId
+            }
+          };
+        }).sort((a: DataPoint, b: DataPoint) => {
+          // Sort by date (oldest first)
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        });
+      }
+      
+      // Handle API error messages
+      if (response.data && response.data.status !== 'REQUEST_SUCCEEDED') {
+        throw new AppError(
+          `BLS API error: ${response.data.message || 'Unknown error'}`,
+          'Api'
+        );
+      }
+      
+      throw new AppError('No data returned from BLS API', 'Api');
+    } catch (error) {
+      console.error('Error fetching data from BLS:', error);
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
+      throw AppError.fromApiError(error);
+    }
+  }
+  
+  /**
+   * Fetch unemployment rate data
+   * @param startYear Start year (YYYY)
+   * @param endYear End year (YYYY)
+   * @returns Array of DataPoints with unemployment rate values
+   */
+  async fetchUnemploymentRate(startYear: string = '', endYear: string = ''): Promise<DataPoint[]> {
+    // LNS14000000 is the series ID for the unemployment rate
+    return this.fetchSeries('LNS14000000', startYear, endYear);
+  }
+  
+  /**
+   * Fetch Consumer Price Index (CPI) data
+   * @param startYear Start year (YYYY)
+   * @param endYear End year (YYYY)
+   * @returns Array of DataPoints with CPI values
+   */
+  async fetchCPI(startYear: string = '', endYear: string = ''): Promise<DataPoint[]> {
+    // CUUR0000SA0 is the series ID for CPI for All Urban Consumers
+    return this.fetchSeries('CUUR0000SA0', startYear, endYear);
+  }
+  
+  /**
+   * Fetch employment data for a specific industry
+   * @param industryCode BLS industry code
+   * @param startYear Start year (YYYY)
+   * @param endYear End year (YYYY)
+   * @returns Array of DataPoints with employment values
+   */
+  async fetchIndustryEmployment(industryCode: string, startYear: string = '', endYear: string = ''): Promise<DataPoint[]> {
+    // Construct series ID for the industry employment
+    // Format: CEU[industry code]01
+    const seriesId = `CEU${industryCode}01`;
+    return this.fetchSeries(seriesId, startYear, endYear);
+  }
+  
+  /**
+   * Calculate inflation rate from CPI data
+   * @param cpiData Array of DataPoints with CPI values
+   * @returns Array of DataPoints with inflation rate values (year-over-year percent change)
+   */
+  calculateInflationRate(cpiData: DataPoint[]): DataPoint[] {
+    if (!cpiData || cpiData.length < 13) {
+      // Need at least 13 months to calculate 12-month change
+      return [];
+    }
+    
+    return cpiData.map((item, index) => {
+      // Find the data point from 12 months ago
+      const yearAgoIndex = cpiData.findIndex(p => {
+        const itemDate = new Date(item.date);
+        const pDate = new Date(p.date);
+        return pDate.getMonth() === itemDate.getMonth() && 
+               pDate.getFullYear() === itemDate.getFullYear() - 1;
+      });
+      
+      if (yearAgoIndex >= 0) {
+        const yearAgoValue = cpiData[yearAgoIndex].value;
+        const currentValue = item.value;
+        const inflationRate = ((currentValue - yearAgoValue) / yearAgoValue) * 100;
+        
+        return {
+          date: item.date,
+          value: parseFloat(inflationRate.toFixed(1)),
+          rawValue: item.rawValue,
+          metadata: {
+            ...item.metadata,
+            calculationType: 'YearOverYearPercentChange'
+          }
+        };
+      }
+      
+      // If we don't have data from a year ago, return null value
+      return {
+        date: item.date,
+        value: null as any,
+        rawValue: item.rawValue,
+        metadata: item.metadata
+      };
+    }).filter(item => item.value !== null);
+  }
+}
+
+export default BLSService;

@@ -19,7 +19,7 @@ export class BEAService {
     try {
       // Validate frequency
       if (!['A', 'Q'].includes(frequency)) {
-        throw new AppError('Invalid frequency. Use "A" for annual or "Q" for quarterly.', 'Api');
+        throw new AppError('Invalid frequency. Use "A" for annual or "Q" for quarterly.', 'API');
       }
       
       const params: any = {
@@ -63,7 +63,7 @@ export class BEAService {
         return gdpData.sort((a: DataPoint, b: DataPoint) => new Date(a.date).getTime() - new Date(b.date).getTime());
       }
       
-      throw new AppError('No data returned from BEA API', 'Api');
+      throw new AppError('No data returned from BEA API', 'API');
     } catch (error) {
       console.error('Error fetching GDP data from BEA:', error);
       
@@ -71,7 +71,7 @@ export class BEAService {
         throw error;
       }
       
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
   
@@ -106,7 +106,7 @@ export class BEAService {
         }));
       }
       
-      throw new AppError('No state GDP data returned from BEA API', 'Api');
+      throw new AppError('No state GDP data returned from BEA API', 'API');
     } catch (error) {
       console.error('Error fetching state GDP data from BEA:', error);
       
@@ -114,7 +114,7 @@ export class BEAService {
         throw error;
       }
       
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
   
@@ -136,7 +136,7 @@ export class BEAService {
         return response.data.BEAAPI.Results.APIDatasetList.Dataset;
       }
       
-      throw new AppError('No datasets returned from BEA API', 'Api');
+      throw new AppError('No datasets returned from BEA API', 'API');
     } catch (error) {
       console.error('Error fetching BEA datasets:', error);
       
@@ -144,7 +144,7 @@ export class BEAService {
         throw error;
       }
       
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
   

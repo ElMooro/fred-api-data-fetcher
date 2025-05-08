@@ -19,7 +19,6 @@ const Dashboard = () => {
   const { getIndicatorDetails } = useDataService();
   
   // Debounced function to fetch indicator details
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchIndicatorDetails = useCallback(debounce(async () => {
     if (!selectedIndicator) return;
     

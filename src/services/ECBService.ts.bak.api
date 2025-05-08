@@ -90,7 +90,7 @@ export class ECBService {
         return result;
       }
       
-      throw new AppError('No data returned from ECB API', 'Api');
+      throw new AppError('No data returned from ECB API', 'API');
     } catch (error) {
       console.error('Error fetching ECB interest rates:', error);
       
@@ -98,7 +98,7 @@ export class ECBService {
         throw error;
       }
       
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
   
@@ -134,7 +134,7 @@ export class ECBService {
         return this.parseECBData(response.data, 'Euro Area Inflation (HICP)');
       }
       
-      throw new AppError('No inflation data returned from ECB API', 'Api');
+      throw new AppError('No inflation data returned from ECB API', 'API');
     } catch (error) {
       console.error('Error fetching ECB inflation data:', error);
       
@@ -142,7 +142,7 @@ export class ECBService {
         throw error;
       }
       
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
   
@@ -178,7 +178,7 @@ export class ECBService {
         return this.parseECBData(response.data, 'Euro Area GDP Growth');
       }
       
-      throw new AppError('No GDP growth data returned from ECB API', 'Api');
+      throw new AppError('No GDP growth data returned from ECB API', 'API');
     } catch (error) {
       console.error('Error fetching ECB GDP growth data:', error);
       
@@ -186,7 +186,7 @@ export class ECBService {
         throw error;
       }
       
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
   

@@ -98,7 +98,7 @@ export class ECBService {
         throw error;
       }
       
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
   
@@ -142,7 +142,7 @@ export class ECBService {
         throw error;
       }
       
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
   
@@ -186,7 +186,7 @@ export class ECBService {
         throw error;
       }
       
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
   

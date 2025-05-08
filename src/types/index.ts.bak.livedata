@@ -62,9 +62,8 @@ export interface LiveDataPoint {
   percentChange?: number;
 }
 
-// Fixed LiveData interface to correctly handle lastUpdated
 export interface LiveData {
-  [key: string]: LiveDataPoint | string | undefined;
+  [key: string]: LiveDataPoint;
   lastUpdated?: string;
 }
 

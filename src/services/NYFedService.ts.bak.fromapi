@@ -32,7 +32,7 @@ export class NYFedService {
       return [];
     } catch (error) {
       console.error("Error fetching SOFR data:", error);
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
 
@@ -47,7 +47,7 @@ export class NYFedService {
       return response.data;
     } catch (error) {
       console.error("Error fetching Treasury yields:", error);
-      throw AppError.fromAxiosError(error);
+      throw AppError.fromApiError(error);
     }
   }
 }

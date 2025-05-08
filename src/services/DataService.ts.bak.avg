@@ -173,7 +173,7 @@ export class DataService {
         return {
           min: 0,
           max: 0,
-          average: 0,
+          avg: 0,
           median: 0,
           stdDev: 0,
           count: 0
@@ -185,7 +185,7 @@ export class DataService {
         return {
           min: 0,
           max: 0,
-          average: 0,
+          avg: 0,
           median: 0,
           stdDev: 0,
           count: 0
@@ -211,7 +211,7 @@ export class DataService {
       return {
         min,
         max,
-        average: mean,
+        mean,
         median,
         stdDev,
         count: values.length
@@ -221,7 +221,7 @@ export class DataService {
       return {
         min: 0,
         max: 0,
-        average: 0,
+        avg: 0,
         median: 0,
         stdDev: 0,
         count: 0,

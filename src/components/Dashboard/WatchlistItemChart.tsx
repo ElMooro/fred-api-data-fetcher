@@ -1,1 +1,28 @@
-import React, {useState, useEffect} from "react";import {LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer} from "recharts";import {WatchlistItem, DataPoint} from "../../types";interface WatchlistItemChartProps {item: WatchlistItem;}export const WatchlistItemChart: React.FC<WatchlistItemChartProps> = ({item}) => {const [itemData, setItemData] = useState<DataPoint[]>([]);const [isItemLoading, setIsItemLoading] = useState<boolean>(true);const [itemError, setItemError] = useState<string>("");useEffect(() => {let isMounted = true;setIsItemLoading(true);setItemError("");const loadData = async () => {try {await new Promise(resolve => setTimeout(resolve, 1000));const data: DataPoint[] = [{date: "2023-01-01", value: 105.2},{date: "2023-02-01", value: 107.5},{date: "2023-03-01", value: 106.8},];if (!isMounted) return;setItemData(data);setIsItemLoading(false);} catch (error) {if (!isMounted) return;console.error("Error loading watchlist item:", error);setItemError("Failed to load data");setIsItemLoading(false);setItemData([]);}};loadData();return () => {isMounted = false;};}, [item.id]);if (isItemLoading) {return <div>Loading chart data...</div>;}if (itemError) {return <div className="error">{itemError}</div>;}return (<div style={{height: "200px", width: "100%"}}><ResponsiveContainer><LineChart data={itemData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="date" /><YAxis /><Tooltip /><Legend /><Line type="monotone" dataKey="value" name={item.name} stroke="#8884d8" /></LineChart></ResponsiveContainer></div>);};
+import React from 'react';
+import { WatchlistItem } from '../../types';
+
+interface WatchlistItemChartProps {
+  item: WatchlistItem;
+}
+
+export const WatchlistItemChart: React.FC<WatchlistItemChartProps> = ({item}) => {
+  return (
+    <div className="watchlist-chart">
+      <h3>{item.name}</h3>
+      <p>Source: {item.source}</p>
+      <p>Series ID: {item.series_id}</p>
+      <div className="placeholder-chart" style={{
+        height: '200px',
+        backgroundColor: '#f0f0f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: '1px dashed #ccc'
+      }}>
+        Chart Placeholder for {item.name}
+      </div>
+    </div>
+  );
+};
+
+export default WatchlistItemChart;

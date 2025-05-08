@@ -211,7 +211,7 @@ export class DataService {
       return {
         min,
         max,
-        average: mean,
+        mean,
         median,
         stdDev,
         count: values.length
