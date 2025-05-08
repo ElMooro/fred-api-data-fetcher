@@ -1,0 +1,103 @@
+.bea-panel {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.bea-panel h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.bea-panel h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #555;
+  font-size: 1.1rem;
+}
+
+.bea-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.highlight-card {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
+}
+
+.gdp-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #2E86C1;
+  margin: 8px 0;
+}
+
+.growth-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin: 8px 0;
+}
+
+.growth-value.positive {
+  color: #27AE60;
+}
+
+.growth-value.negative {
+  color: #E74C3C;
+}
+
+.date {
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.gdp-chart {
+  margin-bottom: 24px;
+}
+
+.bea-info {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.bea-info p {
+  margin-top: 8px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.bea-info a {
+  color: #2E86C1;
+  text-decoration: none;
+}
+
+.bea-info a:hover {
+  text-decoration: underline;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: #666;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 16px 0;
+}

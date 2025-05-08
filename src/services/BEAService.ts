@@ -1,0 +1,189 @@
+import axios from 'axios';
+import { DataPoint } from '../types';
+import { AppError } from '../utils/error';
+
+export class BEAService {
+  private apiKey: string;
+  
+  constructor(apiKey = process.env.REACT_APP_BEA_API_KEY || '') {
+    this.apiKey = apiKey;
+  }
+  
+  /**
+   * Fetch GDP data from BEA API
+   * @param year Year to fetch data for (YYYY or 'LAST5' etc.)
+   * @param frequency Data frequency (A for annual, Q for quarterly)
+   * @returns Array of DataPoints containing GDP values
+   */
+  async fetchGDP(year: string = 'LAST5', frequency: string = 'Q'): Promise<DataPoint[]> {
+    try {
+      // Validate frequency
+      if (!['A', 'Q'].includes(frequency)) {
+        throw new AppError('Invalid frequency. Use "A" for annual or "Q" for quarterly.', 'API');
+      }
+      
+      const params: any = {
+        UserID: this.apiKey,
+        method: 'GetData',
+        DataSetName: 'NIPA',
+        TableName: 'T10101', // GDP table
+        Frequency: frequency,
+        Year: year,
+        ResultFormat: 'JSON'
+      };
+      
+      // Add Quarter parameter if frequency is quarterly and year is specific
+      if (frequency === 'Q' && !year.startsWith('LAST')) {
+        params.Quarter = 'All';
+      }
+      
+      const response = await axios.get('https://apps.bea.gov/api/data', { params });
+      
+      if (response.data && response.data.BEAAPI && response.data.BEAAPI.Results && response.data.BEAAPI.Results.Data) {
+        // Filter for GDP data (Line Number 1)
+        const gdpData = response.data.BEAAPI.Results.Data
+          .filter((item: any) => item.LineNumber === '1')
+          .map((item: any) => {
+            // Parse the time period into a proper date
+            const date = this.parseTimePeriod(item.TimePeriod);
+            
+            return {
+              date,
+              value: parseFloat(item.DataValue),
+              rawValue: parseFloat(item.DataValue),
+              metadata: {
+                unit: item.CL_UNIT,
+                description: item.LineDescription,
+                timePeriod: item.TimePeriod
+              }
+            };
+          });
+        
+        // Sort by date (oldest first)
+        return gdpData.sort((a: DataPoint, b: DataPoint) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      }
+      
+      throw new AppError('No data returned from BEA API', 'API');
+    } catch (error) {
+      console.error('Error fetching GDP data from BEA:', error);
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
+      throw AppError.fromApiError(error);
+    }
+  }
+  
+  /**
+   * Fetch state GDP data from BEA Regional dataset
+   * @param year Year to fetch data for
+   * @param states Array of state FIPS codes or 'STATE' for all states
+   * @returns Array of State GDP DataPoints
+   */
+  async fetchStateGDP(year: string = 'LAST', states: string = 'STATE'): Promise<any[]> {
+    try {
+      const params = {
+        UserID: this.apiKey,
+        method: 'GetData',
+        DataSetName: 'Regional',
+        TableName: 'SAGDP2N',
+        GeoFips: states,
+        Year: year,
+        ResultFormat: 'JSON'
+      };
+      
+      const response = await axios.get('https://apps.bea.gov/api/data', { params });
+      
+      if (response.data && response.data.BEAAPI && response.data.BEAAPI.Results && response.data.BEAAPI.Results.Data) {
+        return response.data.BEAAPI.Results.Data.map((item: any) => ({
+          state: item.GeoName,
+          fips: item.GeoFips,
+          year: item.TimePeriod,
+          value: parseFloat(item.DataValue || '0'),
+          metric: item.LineDescription,
+          unit: item.CL_UNIT || 'Millions of current dollars'
+        }));
+      }
+      
+      throw new AppError('No state GDP data returned from BEA API', 'API');
+    } catch (error) {
+      console.error('Error fetching state GDP data from BEA:', error);
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
+      throw AppError.fromApiError(error);
+    }
+  }
+  
+  /**
+   * Get a list of available datasets in the BEA API
+   * @returns Array of available datasets
+   */
+  async getAvailableDatasets(): Promise<any[]> {
+    try {
+      const params = {
+        UserID: this.apiKey,
+        method: 'GetAPIDatasetList',
+        ResultFormat: 'JSON'
+      };
+      
+      const response = await axios.get('https://apps.bea.gov/api/data', { params });
+      
+      if (response.data && response.data.BEAAPI && response.data.BEAAPI.Results && response.data.BEAAPI.Results.APIDatasetList) {
+        return response.data.BEAAPI.Results.APIDatasetList.Dataset;
+      }
+      
+      throw new AppError('No datasets returned from BEA API', 'API');
+    } catch (error) {
+      console.error('Error fetching BEA datasets:', error);
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
+      throw AppError.fromApiError(error);
+    }
+  }
+  
+  /**
+   * Helper method to parse time period strings into proper dates
+   * @param timePeriod Time period string from BEA API (e.g. "2023Q1", "2022A")
+   * @returns ISO date string
+   */
+  private parseTimePeriod(timePeriod: string): string {
+    try {
+      // For annual data (e.g. "2022A")
+      if (timePeriod.endsWith('A')) {
+        const year = timePeriod.replace('A', '');
+        return `${year}-12-31`;
+      }
+      
+      // For quarterly data (e.g. "2023Q1")
+      if (timePeriod.includes('Q')) {
+        const [year, quarterStr] = timePeriod.split('Q');
+        const quarter = parseInt(quarterStr);
+        
+        // Map quarter to month-end
+        const monthMap: {[key: number]: string} = {
+          1: '03-31',
+          2: '06-30',
+          3: '09-30',
+          4: '12-31'
+        };
+        
+        return `${year}-${monthMap[quarter] || '12-31'}`;
+      }
+      
+      // If unknown format, return as-is
+      return timePeriod;
+    } catch (error) {
+      console.error('Error parsing time period:', error);
+      return timePeriod;
+    }
+  }
+}
+
+export default BEAService;
