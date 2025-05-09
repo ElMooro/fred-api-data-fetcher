@@ -149,7 +149,7 @@ const BEAPanel: React.FC<BEAPanelProps> = ({ years = 5 }) => {
                   />
                   <Tooltip 
                     formatter={(value: any) => [`${value}%`, 'GDP Growth']}
-                    labelFormatter={(date) => formatQuarter(date)}
+                    labelFormatter={(date) => formatQuarter(String(date))}
                   />
                   <Legend />
                   <Line 

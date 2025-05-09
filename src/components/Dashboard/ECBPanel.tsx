@@ -127,7 +127,7 @@ const ECBPanel: React.FC<ECBPanelProps> = ({ years = 5 }) => {
                   />
                   <Tooltip 
                     formatter={(value: any) => [`${value}%`, '']}
-                    labelFormatter={(date) => formatDate(date)}
+                    labelFormatter={(date) => formatDate(String(date))}
                   />
                   <Legend />
                   <Line 

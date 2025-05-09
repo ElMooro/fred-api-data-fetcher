@@ -1,0 +1,257 @@
+{
+  "timestamp": "2025-05-08T21:42:32.155Z",
+  "summary": [
+    {
+      "name": "FRED",
+      "total": 2,
+      "success": 0,
+      "failed": 2,
+      "avgResponseTime": 365,
+      "totalResponseTime": 730
+    },
+    {
+      "name": "ECB",
+      "total": 2,
+      "success": 1,
+      "failed": 1,
+      "avgResponseTime": 480,
+      "totalResponseTime": 960
+    },
+    {
+      "name": "Census",
+      "total": 2,
+      "success": 0,
+      "failed": 2,
+      "avgResponseTime": 0,
+      "totalResponseTime": 0
+    },
+    {
+      "name": "BLS",
+      "total": 2,
+      "success": 2,
+      "failed": 0,
+      "avgResponseTime": 131,
+      "totalResponseTime": 262
+    },
+    {
+      "name": "BEA",
+      "total": 2,
+      "success": 2,
+      "failed": 0,
+      "avgResponseTime": 123,
+      "totalResponseTime": 246
+    },
+    {
+      "name": "Treasury",
+      "total": 5,
+      "success": 1,
+      "failed": 4,
+      "avgResponseTime": 119,
+      "totalResponseTime": 595
+    }
+  ],
+  "overallSuccessRate": 40,
+  "totalEndpoints": 15,
+  "successfulEndpoints": 6,
+  "failedEndpoints": 9,
+  "results": [
+    {
+      "name": "FRED - Series",
+      "category": "FRED",
+      "url": "https://api.stlouisfed.org/fred/series?series_id=GDPC1?api_key=HIDDEN&file_type=json",
+      "status": 400,
+      "success": false,
+      "responseTime": 340,
+      "responseSize": "214 Bytes",
+      "timestamp": "2025-05-08T21:42:28.933Z",
+      "fieldsPresent": false,
+      "message": "Failed check for required fields"
+    },
+    {
+      "name": "FRED - Categories",
+      "category": "FRED",
+      "url": "https://api.stlouisfed.org/fred/category?category_id=125?api_key=HIDDEN&file_type=json",
+      "status": 400,
+      "success": false,
+      "responseTime": 390,
+      "responseSize": "214 Bytes",
+      "timestamp": "2025-05-08T21:42:29.324Z",
+      "fieldsPresent": false,
+      "message": "Failed check for required fields"
+    },
+    {
+      "name": "ECB - Exchange Rates",
+      "category": "ECB",
+      "url": "https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=jsondata",
+      "status": 200,
+      "success": true,
+      "responseTime": 960,
+      "responseSize": "999.2 KB",
+      "timestamp": "2025-05-08T21:42:30.679Z",
+      "fieldsPresent": true,
+      "message": "Success"
+    },
+    {
+      "name": "ECB - Interest Rates",
+      "category": "ECB",
+      "url": "https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.MRR_FR.LEV",
+      "status": 200,
+      "success": false,
+      "responseTime": 168,
+      "responseSize": "0 Bytes",
+      "timestamp": "2025-05-08T21:42:30.848Z",
+      "fieldsPresent": false,
+      "message": "Failed to parse response: Unexpected token '<', \"<?xml vers\"... is not valid JSON",
+      "rawError": {
+        "error": "Failed to parse response: Unexpected token '<', \"<?xml vers\"... is not valid JSON",
+        "statusCode": 200,
+        "responseTime": 168,
+        "rawData": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><message:GenericData xmlns:message=\"http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message\" xmlns:common=\"http://www.sdmx.org/resources/sdmxml/schemas/v2_1/common\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:generic=\"http://www.sdmx.org/resources/sdmxml/schemas/v2_1/data/generic\" xsi:schemaLocation=\"http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message http://data-api.ecb.europa.eu:80/vocabulary/sdmx/2_1/SDMXMessage.xsd http://www.sdmx..."
+      }
+    },
+    {
+      "name": "Census - Population Estimates",
+      "category": "Census",
+      "url": "https://api.census.gov/data/2022/pep/population?get=NAME,POP_2022&for=state:*&key=YOUR_CENSUS_API_KEY",
+      "status": 302,
+      "success": false,
+      "responseTime": 111,
+      "responseSize": "0 Bytes",
+      "timestamp": "2025-05-08T21:42:30.960Z",
+      "fieldsPresent": false,
+      "message": "Failed to parse response: Unexpected end of JSON input",
+      "rawError": {
+        "error": "Failed to parse response: Unexpected end of JSON input",
+        "statusCode": 302,
+        "responseTime": 111,
+        "rawData": ""
+      }
+    },
+    {
+      "name": "Census - ACS Data",
+      "category": "Census",
+      "url": "https://api.census.gov/data/2022/acs/acs1?get=NAME,B01001_001E&for=state:*&key=YOUR_CENSUS_API_KEY",
+      "status": 302,
+      "success": false,
+      "responseTime": 21,
+      "responseSize": "0 Bytes",
+      "timestamp": "2025-05-08T21:42:30.982Z",
+      "fieldsPresent": false,
+      "message": "Failed to parse response: Unexpected end of JSON input",
+      "rawError": {
+        "error": "Failed to parse response: Unexpected end of JSON input",
+        "statusCode": 302,
+        "responseTime": 21,
+        "rawData": ""
+      }
+    },
+    {
+      "name": "BLS - Latest Data",
+      "category": "BLS",
+      "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/CUUR0000SA0?registrationkey=YOUR_BLS_API_KEY",
+      "status": 200,
+      "success": true,
+      "responseTime": 185,
+      "responseSize": "199 Bytes",
+      "timestamp": "2025-05-08T21:42:31.167Z",
+      "fieldsPresent": true,
+      "message": "Success"
+    },
+    {
+      "name": "BLS - Series Info",
+      "category": "BLS",
+      "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/LNS14000000?registrationkey=YOUR_BLS_API_KEY",
+      "status": 200,
+      "success": true,
+      "responseTime": 77,
+      "responseSize": "199 Bytes",
+      "timestamp": "2025-05-08T21:42:31.246Z",
+      "fieldsPresent": true,
+      "message": "Success"
+    },
+    {
+      "name": "BEA - GDP Data",
+      "category": "BEA",
+      "url": "https://apps.bea.gov/api/data??UserID=HIDDEN&method=GetData&DataSetName=NIPA&TableName=T10101&Frequency=Q&Year=2023&Quarter=Q4&ResultFormat=JSON",
+      "status": 200,
+      "success": true,
+      "responseTime": 233,
+      "responseSize": "690 Bytes",
+      "timestamp": "2025-05-08T21:42:31.479Z",
+      "fieldsPresent": true,
+      "message": "Success"
+    },
+    {
+      "name": "BEA - Regional Data",
+      "category": "BEA",
+      "url": "https://apps.bea.gov/api/data??UserID=HIDDEN&method=GetData&DataSetName=Regional&TableName=CAINC1&GeoFips=STATE&Year=2022&ResultFormat=JSON",
+      "status": 200,
+      "success": true,
+      "responseTime": 13,
+      "responseSize": "644 Bytes",
+      "timestamp": "2025-05-08T21:42:31.493Z",
+      "fieldsPresent": true,
+      "message": "Success"
+    },
+    {
+      "name": "Treasury - Average Interest Rates",
+      "category": "Treasury",
+      "url": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v2/accounting/od/avg_interest_rates",
+      "status": 200,
+      "success": true,
+      "responseTime": 308,
+      "responseSize": "33.65 KB",
+      "timestamp": "2025-05-08T21:42:31.863Z",
+      "fieldsPresent": true,
+      "message": "Success"
+    },
+    {
+      "name": "Treasury - Securities Auctions",
+      "category": "Treasury",
+      "url": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/debt/tror/securities_auction",
+      "status": 403,
+      "success": false,
+      "responseTime": 73,
+      "responseSize": "167 Bytes",
+      "timestamp": "2025-05-08T21:42:31.937Z",
+      "fieldsPresent": false,
+      "message": "Failed check for required fields"
+    },
+    {
+      "name": "Treasury - Record-Setting Auctions",
+      "category": "Treasury",
+      "url": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/debt/tror/record_setting_auction",
+      "status": 403,
+      "success": false,
+      "responseTime": 72,
+      "responseSize": "171 Bytes",
+      "timestamp": "2025-05-08T21:42:32.010Z",
+      "fieldsPresent": false,
+      "message": "Failed check for required fields"
+    },
+    {
+      "name": "Treasury - Securities Issued",
+      "category": "Treasury",
+      "url": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/debt/tror/securities_issued_treasurydirect",
+      "status": 403,
+      "success": false,
+      "responseTime": 71,
+      "responseSize": "181 Bytes",
+      "timestamp": "2025-05-08T21:42:32.082Z",
+      "fieldsPresent": false,
+      "message": "Failed check for required fields"
+    },
+    {
+      "name": "Treasury - Securities Buybacks",
+      "category": "Treasury",
+      "url": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/debt/tror/securities_buyback",
+      "status": 403,
+      "success": false,
+      "responseTime": 71,
+      "responseSize": "167 Bytes",
+      "timestamp": "2025-05-08T21:42:32.154Z",
+      "fieldsPresent": false,
+      "message": "Failed check for required fields"
+    }
+  ]
+}
